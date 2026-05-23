@@ -4,6 +4,7 @@ extends Area2D
 var food_type = "standard"
 var value = 1.0
 var color = Color(0.8, 0.3, 0.3)
+var is_absorbing = false
 
 # Wandering steering physics
 var velocity = Vector2.ZERO
@@ -33,6 +34,9 @@ func _ready():
         color = Color(0.2, 0.9, 0.9) # Cyan
         mat.set_shader_parameter("cell_color", color)
         mat.set_shader_parameter("nucleus_color", Color(0.1, 0.5, 0.5))
+        mat.set_shader_parameter("membrane_color", color.lerp(Color.WHITE, 0.5))
+        mat.set_shader_parameter("granule_color", Color(0.85, 1.0, 1.0, 0.28))
+        mat.set_shader_parameter("nucleolus_color", Color(0.02, 0.18, 0.18, 0.95))
         mat.set_shader_parameter("wobble_speed", 5.0)
     elif roll < 0.20:
         food_type = "golden"
@@ -40,6 +44,9 @@ func _ready():
         color = Color(1.0, 0.85, 0.2) # Gold
         mat.set_shader_parameter("cell_color", color)
         mat.set_shader_parameter("nucleus_color", Color(0.7, 0.4, 0.0))
+        mat.set_shader_parameter("membrane_color", color.lerp(Color.WHITE, 0.45))
+        mat.set_shader_parameter("granule_color", Color(1.0, 0.98, 0.62, 0.35))
+        mat.set_shader_parameter("nucleolus_color", Color(0.28, 0.12, 0.0, 0.95))
         mat.set_shader_parameter("wobble_speed", 3.8)
     else:
         food_type = "standard"
@@ -50,6 +57,9 @@ func _ready():
         color = Color(r, g, b)
         mat.set_shader_parameter("cell_color", color)
         mat.set_shader_parameter("nucleus_color", Color(r * 0.5, g * 0.5, b * 0.5))
+        mat.set_shader_parameter("membrane_color", color.lerp(Color.WHITE, 0.42))
+        mat.set_shader_parameter("granule_color", color.lerp(Color.WHITE, 0.75))
+        mat.set_shader_parameter("nucleolus_color", Color(r * 0.22, g * 0.22, b * 0.22, 0.95))
         mat.set_shader_parameter("wobble_speed", randf_range(2.0, 5.0))
         
     mat.set_shader_parameter("wobble_amplitude", randf_range(0.02, 0.05))
@@ -76,6 +86,9 @@ func select_new_steering():
     steering_timer = randf_range(1.5, 4.0)
 
 func _process(delta):
+    if is_absorbing:
+        return
+
     # 1. Wandering behavior
     steering_timer -= delta
     if steering_timer <= 0:

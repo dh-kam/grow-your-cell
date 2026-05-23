@@ -1,14 +1,16 @@
 extends Area2D
 
-# AI Enemy cells - can be predators (large, hunt player) or runners (small, flee player)
-enum Type { PREDATOR, RUNNER }
+# AI Enemy cells - predators hunt, runners flee, cancer cells corrupt/destroy.
+enum Type { PREDATOR, RUNNER, CANCER }
 
 var enemy_type = Type.PREDATOR
 var cell_mass = 1.2
+var force_cancer = false
 var velocity = Vector2.ZERO
 var last_velocity = Vector2.ZERO
 var steering = Vector2.ZERO
 var steering_timer = 0.0
+var is_absorbing = false
 
 # Colors based on type
 var cell_color = Color(0.7, 0.2, 0.4) # Dark purple/red
@@ -40,7 +42,9 @@ func _ready():
     area_entered.connect(_on_area_entered)
     
     # Configure parameters based on type
-    if randf() > 0.6:
+    if force_cancer:
+        configure_cancer(cell_mass)
+    elif randf() > 0.6:
         enemy_type = Type.RUNNER
         cell_mass = randf_range(0.5, 0.8)
         cell_color = Color(0.2, 0.8, 0.4) # Bright green
@@ -55,9 +59,28 @@ func _ready():
         
     $ColorRect.material.set_shader_parameter("cell_color", cell_color)
     $ColorRect.material.set_shader_parameter("nucleus_color", nucleus_color)
+    $ColorRect.material.set_shader_parameter("membrane_color", cell_color.lerp(Color.WHITE, 0.42))
+    $ColorRect.material.set_shader_parameter("granule_color", cell_color.lerp(Color.WHITE, 0.72))
+    $ColorRect.material.set_shader_parameter("nucleolus_color", nucleus_color.lerp(Color.BLACK, 0.25))
     
     update_scale()
     select_steering()
+
+func configure_cancer(target_mass := 0.0):
+    enemy_type = Type.CANCER
+    cell_mass = target_mass if target_mass > 0.0 else randf_range(0.8, 1.4)
+    cell_color = Color(0.66, 0.25, 0.95)
+    nucleus_color = Color(0.22, 0.04, 0.42)
+    if color_rect and color_rect.material:
+        color_rect.material.set_shader_parameter("cell_color", cell_color)
+        color_rect.material.set_shader_parameter("nucleus_color", nucleus_color)
+        color_rect.material.set_shader_parameter("membrane_color", cell_color.lerp(Color.WHITE, 0.45))
+        color_rect.material.set_shader_parameter("granule_color", cell_color.lerp(Color.WHITE, 0.72))
+        color_rect.material.set_shader_parameter("nucleolus_color", nucleus_color.lerp(Color.BLACK, 0.35))
+        color_rect.material.set_shader_parameter("wobble_speed", 5.6)
+        color_rect.material.set_shader_parameter("wobble_amplitude", 0.055)
+        color_rect.material.set_shader_parameter("wobble_frequency", 11.0)
+    update_scale()
 
 func update_scale():
     var cell_scale = sqrt(cell_mass)
@@ -73,6 +96,9 @@ func select_steering():
     steering_timer = randf_range(1.0, 3.0)
 
 func _process(delta):
+    if is_absorbing:
+        return
+
     handle_ai(delta)
     handle_physics(delta)
 
@@ -102,7 +128,9 @@ func handle_ai(delta):
         var diff = target_cell.global_position - global_position
         var is_player_larger = target_cell.cell_mass > cell_mass
         
-        if enemy_type == Type.PREDATOR:
+        if enemy_type == Type.CANCER:
+            steering = diff.normalized() * 460.0
+        elif enemy_type == Type.PREDATOR:
             if is_player_larger:
                 # Flee from larger player
                 steering = -diff.normalized() * 300.0
@@ -118,6 +146,20 @@ func handle_ai(delta):
                 if steering_timer <= 0:
                     select_steering()
     else:
+        if enemy_type == Type.CANCER:
+            var nearest_enemy = null
+            var nearest_dist = 999999.0
+            for enemy in get_tree().get_nodes_in_group("enemies"):
+                if enemy == self or enemy.get("enemy_type") == Type.CANCER:
+                    continue
+                var dist = global_position.distance_to(enemy.global_position)
+                if dist < nearest_dist and dist < 540.0:
+                    nearest_dist = dist
+                    nearest_enemy = enemy
+            if nearest_enemy:
+                steering = (nearest_enemy.global_position - global_position).normalized() * 280.0
+                return
+
         # No player in sight, wander randomly
         if steering_timer <= 0:
             select_steering()
@@ -135,6 +177,8 @@ func handle_physics(delta):
     var max_speed = 180.0 / sqrt(cell_mass)
     if enemy_type == Type.RUNNER:
         max_speed *= 1.4 # Runners are faster
+    elif enemy_type == Type.CANCER:
+        max_speed *= 1.22
     if velocity.length() > max_speed:
         velocity = velocity.limit_length(max_speed)
         
@@ -183,12 +227,23 @@ func handle_physics(delta):
         color_rect.material.set_shader_parameter("squish_amount", squish_amount)
 
 func _on_area_entered(area):
+    if is_absorbing:
+        return
+
     # Eating interactions
     if area.is_in_group("player_cells"):
         # Check spore mode safety
         var p_controller = area.get_parent()
+        if not p_controller or not p_controller.has_method("update_total_mass"):
+            return
+
         if p_controller and p_controller.get("is_spore_mode") == true:
             return # Spore mode makes immune!
+
+        if enemy_type == Type.CANCER:
+            if p_controller.has_method("handle_cancer_contact"):
+                p_controller.handle_cancer_contact(area, self)
+            return
             
         if cell_mass > area.cell_mass * 1.15:
             # Eat player piece
@@ -198,21 +253,48 @@ func _on_area_entered(area):
             
             # Delete that piece
             p_controller.active_cells.erase(area)
+            p_controller.merge_timers.erase(area)
             area.queue_free()
             p_controller.update_total_mass()
         elif area.cell_mass > cell_mass * 1.15:
             # Player eats this enemy
-            area.add_mass(cell_mass * 0.4)
-            area.trigger_impact(global_position - area.global_position, 40.0)
-            queue_free()
+            if p_controller.has_method("start_enemy_absorb"):
+                p_controller.start_enemy_absorb(area, self)
+            elif p_controller.has_method("add_player_mass"):
+                p_controller.add_player_mass(cell_mass * 0.4, area)
+                queue_free()
+            else:
+                area.add_mass(cell_mass * 0.4)
+                area.trigger_impact(global_position - area.global_position, 40.0)
+                p_controller.update_total_mass()
+                queue_free()
 
     elif area.is_in_group("food"):
+        if area.get("is_absorbing") == true:
+            return
+
         # Eat food item
         cell_mass += area.value * 0.2
         update_scale()
         area.queue_free()
 
     elif area.is_in_group("enemies") and area != self:
+        if area.get("is_absorbing") == true:
+            return
+
+        if enemy_type == Type.CANCER:
+            var main = get_parent()
+            var infection_chance = 0.22
+            if main and main.has_method("get_cancer_infection_chance"):
+                infection_chance = main.get_cancer_infection_chance()
+            if randf() < infection_chance and area.has_method("configure_cancer"):
+                area.configure_cancer(max(0.7, area.cell_mass * 0.9))
+            else:
+                area.cell_mass *= 0.82
+                area.update_scale()
+            trigger_impact(area.global_position - global_position, 32.0)
+            return
+
         # Enemy eats smaller enemy
         if cell_mass > area.cell_mass * 1.15:
             cell_mass += area.cell_mass * 0.4

@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>세포 키우기 게임 (Cell Growth Game)</title>
+    <title>세포 키우기. Grow your cell</title>
     <!-- Modern Premium Typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+KR:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Outfit:wght@300;400;600;800&family=Noto+Sans+KR:wght@300;400;700&display=swap" rel="stylesheet">
     
     <style>
         :root {
@@ -101,6 +101,10 @@
             color: var(--text-main);
         }
 
+        .danger-value {
+            color: var(--accent-pink);
+        }
+
         /* Help panel on top-right */
         #help-panel {
             top: 24px;
@@ -110,6 +114,13 @@
             line-height: 1.5;
             max-width: 320px;
             animation: slideInRight 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+
+        #help-panel.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-8px);
         }
 
         .kbd {
@@ -142,6 +153,25 @@
             display: none;
         }
 
+        #control-mode-panel {
+            bottom: 24px;
+            right: 24px;
+            min-width: 230px;
+        }
+
+        #control-mode-text {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: var(--accent-blue);
+            margin-bottom: 4px;
+        }
+
+        #focus-cell-text {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
         /* Overlay for Initial Screen / Game Over */
         #menu-overlay {
             position: absolute;
@@ -167,25 +197,113 @@
         }
 
         .menu-content {
-            max-width: 500px;
+            width: min(1040px, 94vw);
+            max-height: min(88vh, 860px);
+            overflow-y: auto;
             animation: scaleIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .menu-title {
+            font-family: 'Bagel Fat One', 'Noto Sans KR', sans-serif;
             font-size: 3rem;
-            font-weight: 800;
+            font-weight: 400;
             background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             margin-bottom: 12px;
-            letter-spacing: -0.02em;
+            letter-spacing: 0;
         }
 
         .menu-desc {
             color: var(--text-muted);
             font-size: 0.95rem;
             line-height: 1.6;
-            margin-bottom: 32px;
+            max-width: 680px;
+            margin: 0 auto 24px;
+        }
+
+        .menu-status {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+            color: var(--text-muted);
+            font-size: 0.82rem;
+        }
+
+        .menu-pill {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 999px;
+            padding: 6px 10px;
+        }
+
+        .menu-section-title {
+            margin: 18px 0 10px;
+            color: var(--text-main);
+            font-size: 0.86rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .cell-card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .cell-card {
+            min-height: 138px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(18, 24, 36, 0.72);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: left;
+            color: var(--text-main);
+            cursor: pointer;
+            font-family: inherit;
+            transition: border-color 0.2s, background 0.2s, transform 0.2s;
+        }
+
+        .cell-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(56, 189, 248, 0.65);
+            background: rgba(22, 31, 48, 0.88);
+        }
+
+        .cell-card.selected {
+            border-color: var(--accent-blue);
+            box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.45), 0 8px 24px rgba(56, 189, 248, 0.12);
+        }
+
+        .cell-card.locked {
+            opacity: 0.72;
+        }
+
+        .cell-card-name {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            font-weight: 800;
+            font-size: 0.95rem;
+            margin-bottom: 6px;
+        }
+
+        .cell-card-desc {
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            line-height: 1.42;
+            min-height: 44px;
+        }
+
+        .cell-card-meta {
+            margin-top: 10px;
+            color: var(--accent-gold);
+            font-size: 0.76rem;
+            font-weight: 700;
         }
 
         .play-btn {
@@ -356,6 +474,22 @@
             <span>총 세포 질량</span>
             <span id="size-text" class="stat-value">1.00x</span>
         </div>
+        <div class="stat-row">
+            <span>스테이지</span>
+            <span id="stage-text" class="stat-value">1</span>
+        </div>
+        <div class="stat-row">
+            <span>안전 한계</span>
+            <span id="stage-target-text" class="stat-value">1.80x</span>
+        </div>
+        <div class="stat-row">
+            <span>암세포 위험</span>
+            <span id="cancer-risk-text" class="stat-value danger-value">낮음</span>
+        </div>
+        <div class="stat-row">
+            <span>토큰</span>
+            <span id="token-text" class="stat-value">0</span>
+        </div>
     </div>
 
     <div id="help-panel" class="ui-panel">
@@ -366,6 +500,12 @@
         <p style="margin-top: 4px;">• <span class="kbd">Q</span> : <b>리소좀 산성 투사체</b> (마우스 방향 발사, 적 세포 수축)</p>
         <p style="margin-top: 4px;">• <span class="kbd">E</span> : <b>포자화 (Sporulation)</b> (이동 불가 상태 무적 실드)</p>
         <p style="margin-top: 4px;">• <span class="kbd">CTRL</span> : <b>섬모 제동 (Cilia Brake)</b> (마찰 급증, 정지/코너링)</p>
+        <p style="margin-top: 4px;">• <span class="kbd">WHEEL</span> : <b>현미경 배율 조정</b> (화면 확대/축소)</p>
+        <p style="margin-top: 4px;">• <span class="kbd">M</span> : <b>AI 본능 조작</b> 전환</p>
+        <p style="margin-top: 4px;">• <span class="kbd">TAB</span> / 세포 클릭 : <b>분열 세포 포커스</b> 전환</p>
+        <p style="margin-top: 4px;">• <span class="kbd">R</span> : <b>포커스 세포 재결합</b></p>
+        <p style="margin-top: 4px;">• 보라색 암세포 : 접촉한 세포를 파괴하거나 암세포화</p>
+        <p style="margin-top: 4px;">• <span class="kbd">H</span><span class="kbd">F1</span> : 이 패널 표시/숨김</p>
     </div>
 
     <!-- Active Mutations Dashboard -->
@@ -378,11 +518,22 @@
         <div id="badge-none" style="font-size: 0.75rem; color: var(--text-muted);">발현된 특성 없음</div>
     </div>
 
+    <div id="control-mode-panel" class="ui-panel">
+        <h1 style="color: var(--text-main); font-size: 0.8rem; margin-bottom: 6px;">조작 상태</h1>
+        <div id="control-mode-text">수동 조작</div>
+        <div id="focus-cell-text">포커스 세포: 1 / 1</div>
+    </div>
+
     <!-- Menu Screen Overlay -->
     <div id="menu-overlay">
         <div class="menu-content">
             <h2 class="menu-title">세포 키우기</h2>
             <p class="menu-desc">생명 연장과 진화를 거듭하며 샬레 내부의 최고 포식자로 군림하십시오. 10가지 세포 기능(분열, 대시, 포탄 발사, 소용돌이, 삼투압 탈수대, 로그라이크 변이, 공생체 펫)이 모두 반영된 유기적 세포 역학을 체험하세요.</p>
+            <div id="menu-status" class="menu-status"></div>
+            <div class="menu-section-title">스테이지 시작 세포</div>
+            <div id="cell-select-grid" class="cell-card-grid"></div>
+            <div class="menu-section-title">스토어</div>
+            <div id="store-grid" class="cell-card-grid"></div>
             <button id="start-btn" class="play-btn">실험 시작</button>
         </div>
     </div>
@@ -406,13 +557,79 @@
         const menuOverlay = document.getElementById("menu-overlay");
         const scoreText = document.getElementById("score-text");
         const sizeText = document.getElementById("size-text");
+        const stageText = document.getElementById("stage-text");
+        const stageTargetText = document.getElementById("stage-target-text");
+        const cancerRiskText = document.getElementById("cancer-risk-text");
+        const tokenText = document.getElementById("token-text");
+        const menuStatus = document.getElementById("menu-status");
+        const cellSelectGrid = document.getElementById("cell-select-grid");
+        const storeGrid = document.getElementById("store-grid");
         const mutationModal = document.getElementById("mutation-modal");
         const modalCardContainer = document.getElementById("modal-card-container");
+        const helpPanel = document.getElementById("help-panel");
+        const controlModeText = document.getElementById("control-mode-text");
+        const focusCellText = document.getElementById("focus-cell-text");
 
         // Game Configuration
         const WORLD_SIZE = 2400; // Plays from -2400 to 2400
         const MAX_FOOD = 220;
         const MAX_ENEMIES = 10;
+        const STAGE_MASS_EPSILON = 0.0001;
+        const CELL_PROGRESS_KEY = "grow-your-cell-progress-v1";
+        const CELL_TYPES = [
+            {
+                id: "starter",
+                name: "기본 세포",
+                cost: 0,
+                desc: "균형 잡힌 표준 세포. 모든 환경에 무난하게 대응합니다.",
+                body: "rgba(56, 189, 248, 0.85)",
+                nucleus: "rgba(14, 116, 144, 0.9)",
+                accel: 1.0,
+                speed: 1.0,
+                acidPower: 1.0,
+                cancerResist: 0.0,
+                startMass: 1.0
+            },
+            {
+                id: "cilia",
+                name: "섬모 민첩 세포",
+                cost: 2,
+                desc: "가볍고 빠르게 반응합니다. 암세포와 거리를 벌리기 좋지만 시작 질량이 낮습니다.",
+                body: "rgba(45, 212, 191, 0.85)",
+                nucleus: "rgba(15, 118, 110, 0.95)",
+                accel: 1.22,
+                speed: 1.18,
+                acidPower: 0.92,
+                cancerResist: 0.04,
+                startMass: 0.92
+            },
+            {
+                id: "macrophage",
+                name: "대식 세포",
+                cost: 4,
+                desc: "리소좀 산성이 강해 암세포를 더 빨리 줄입니다. 움직임은 조금 둔합니다.",
+                body: "rgba(74, 222, 128, 0.84)",
+                nucleus: "rgba(22, 101, 52, 0.95)",
+                accel: 0.92,
+                speed: 0.94,
+                acidPower: 1.38,
+                cancerResist: 0.12,
+                startMass: 1.05
+            },
+            {
+                id: "armored",
+                name: "막강화 세포",
+                cost: 6,
+                desc: "암세포화 확률을 크게 낮춥니다. 대신 기동성과 리소좀 위력이 낮습니다.",
+                body: "rgba(129, 140, 248, 0.84)",
+                nucleus: "rgba(67, 56, 202, 0.95)",
+                accel: 0.84,
+                speed: 0.88,
+                acidPower: 0.88,
+                cancerResist: 0.28,
+                startMass: 1.12
+            }
+        ];
         
         // Physics constants
         const PLAYER_ACCEL = 0.28; // Reduced acceleration
@@ -439,6 +656,7 @@
         let foods = [];
         let enemies = [];
         let projectiles = [];
+        let mergeEffects = [];
         let vortices = [];
         let saltZones = [];
         let keys = {};
@@ -447,6 +665,17 @@
         let isPaused = false;
         let score = 0;
         let totalPlayerMass = 1.0;
+        let currentStage = 1;
+        let stageClearLocked = false;
+        let cancerSpawnTimer = 0;
+        let cancerContactCooldown = 0;
+        let controlMode = "manual";
+        let focusedCellIndex = 0;
+        let helpVisible = true;
+        let helpHideTimer = null;
+        let recombinePair = null;
+        let progress = loadProgress();
+        let selectedCellTypeId = progress.selectedCellTypeId;
         
         // Active mutations
         let mutations = {
@@ -458,13 +687,132 @@
         let mutationMilestones = [1.8, 3.5, 6.0];
         let triggeredMilestones = [];
 
+        function loadProgress() {
+            var fallback = {
+                tokens: 0,
+                unlockedCellTypeIds: ["starter"],
+                selectedCellTypeId: "starter"
+            };
+
+            try {
+                if (!window.localStorage) return fallback;
+                var raw = window.localStorage.getItem(CELL_PROGRESS_KEY);
+                if (!raw) return fallback;
+                var parsed = JSON.parse(raw);
+                if (!parsed || typeof parsed !== "object") return fallback;
+                var unlocked = Array.isArray(parsed.unlockedCellTypeIds) ? parsed.unlockedCellTypeIds : fallback.unlockedCellTypeIds;
+                if (!unlocked.includes("starter")) unlocked.unshift("starter");
+                var selected = unlocked.includes(parsed.selectedCellTypeId) ? parsed.selectedCellTypeId : "starter";
+                return {
+                    tokens: Number.isFinite(parsed.tokens) ? Math.max(0, Math.floor(parsed.tokens)) : 0,
+                    unlockedCellTypeIds: unlocked,
+                    selectedCellTypeId: selected
+                };
+            } catch (err) {
+                return fallback;
+            }
+        }
+
+        function saveProgress() {
+            try {
+                if (!window.localStorage) return;
+                window.localStorage.setItem(CELL_PROGRESS_KEY, JSON.stringify(progress));
+            } catch (err) {
+                // Private browsing or storage-denied environments still run the game.
+            }
+        }
+
+        function getCellType(typeId) {
+            return CELL_TYPES.find(t => t.id === typeId) || CELL_TYPES[0];
+        }
+
+        function isCellUnlocked(typeId) {
+            return progress.unlockedCellTypeIds.includes(typeId);
+        }
+
+        function getStageTargetMass(stage = currentStage) {
+            return 1.75 + (stage - 1) * 1.05 + Math.pow(stage - 1, 1.25) * 0.38;
+        }
+
+        function calculatePlayerMass() {
+            return playerCells.reduce((sum, cell) => sum + cell.mass, 0);
+        }
+
+        function addPlayerGrowth(cell, amount) {
+            if (!cell || amount <= 0) return 0;
+
+            const currentMass = calculatePlayerMass();
+            const targetMass = getStageTargetMass();
+            const room = Math.max(0, targetMass - currentMass);
+            const applied = Math.min(amount, room);
+            if (applied > 0) {
+                cell.mass += applied;
+                cell.radius = 38 * Math.sqrt(cell.mass);
+            }
+            return applied;
+        }
+
+        function enforceStageMassLimit() {
+            const targetMass = getStageTargetMass();
+            if (totalPlayerMass <= targetMass + STAGE_MASS_EPSILON) return false;
+
+            triggerGameOver(`세포가 Stage ${currentStage} 안전 한계 ${targetMass.toFixed(2)}x를 넘어 팽창하다가 파열되었습니다.`);
+            return true;
+        }
+
+        function getCancerInfectionChance(cell) {
+            const cellType = getCellType(cell.cellTypeId);
+            return Math.max(0.12, Math.min(0.84, 0.24 + currentStage * 0.055 - cellType.cancerResist));
+        }
+
+        function getCancerRiskLabel() {
+            if (currentStage <= 1) return "낮음";
+            if (currentStage <= 3) return "상승";
+            if (currentStage <= 6) return "높음";
+            return "위험";
+        }
+
+        function createPlayerCell(overrides = {}) {
+            const cellType = getCellType(selectedCellTypeId);
+            const mass = overrides.mass ?? cellType.startMass;
+            return {
+                x: overrides.x ?? 0,
+                y: overrides.y ?? 0,
+                vx: overrides.vx ?? 0,
+                vy: overrides.vy ?? 0,
+                lastVx: overrides.lastVx ?? 0,
+                lastVy: overrides.lastVy ?? 0,
+                mass: mass,
+                radius: 38 * Math.sqrt(mass),
+                cellTypeId: overrides.cellTypeId ?? selectedCellTypeId,
+                nucleusOffsetX: overrides.nucleusOffsetX ?? -0.05,
+                nucleusOffsetY: overrides.nucleusOffsetY ?? -0.05,
+                nucleusVx: overrides.nucleusVx ?? 0,
+                nucleusVy: overrides.nucleusVy ?? 0,
+                squishOffsetX: overrides.squishOffsetX ?? 1,
+                squishOffsetY: overrides.squishOffsetY ?? 0,
+                squishAmount: overrides.squishAmount ?? 0,
+                squishVx: overrides.squishVx ?? 0,
+                sporeMode: overrides.sporeMode ?? false,
+                wobbleSpeed: overrides.wobbleSpeed ?? 3.5,
+                wobbleAmp: overrides.wobbleAmp ?? 0.035,
+                wobbleFreq: overrides.wobbleFreq ?? 8,
+                mergeCooldown: overrides.mergeCooldown ?? 0,
+                pets: overrides.pets ?? []
+            };
+        }
+
         // Camera configuration
         let camera = {
             x: 0,
             y: 0,
             zoom: 1.0,
-            targetZoom: 1.0
+            targetZoom: 1.0,
+            userZoom: 1.0
         };
+        const USER_ZOOM_MIN = 0.45;
+        const USER_ZOOM_MAX = 2.2;
+        const USER_ZOOM_STEP = 1.12;
 
         // Static environmental zones definition
         function initZones() {
@@ -493,11 +841,28 @@
         // Keyboard Controls
         window.addEventListener("keydown", (e) => {
             const key = e.key.toLowerCase();
+            const code = e.code || "";
             keys[key] = true;
             keys[e.key] = true;
+            if (code) keys[code] = true;
+
+            if (!e.repeat && (key === "h" || code === "KeyH" || e.key === "F1" || code === "F1")) {
+                e.preventDefault();
+                toggleHelpPanel();
+            }
 
             if (!gameRunning || isPaused) return;
 
+            if (key === "m" && !e.repeat) {
+                toggleControlMode();
+            }
+            if (e.key === "Tab" && !e.repeat) {
+                e.preventDefault();
+                cycleFocusedCell();
+            }
+            if (key === "r" && !e.repeat) {
+                triggerRecombine();
+            }
             // Spacebar split
             if (e.key === " ") {
                 e.preventDefault();
@@ -519,6 +884,7 @@
         window.addEventListener("keyup", (e) => {
             keys[e.key.toLowerCase()] = false;
             keys[e.key] = false;
+            if (e.code) keys[e.code] = false;
         });
 
         // Mouse motion tracking for aiming lysosome projectiles
@@ -528,6 +894,30 @@
             mousePos.x = (e.clientX - canvas.width / 2) / camera.zoom + camera.x;
             mousePos.y = (e.clientY - canvas.height / 2) / camera.zoom + camera.y;
         });
+
+        canvas.addEventListener("mousedown", (e) => {
+            if (!gameRunning || isPaused || e.button !== 0) return;
+            const worldX = (e.clientX - canvas.width / 2) / camera.zoom + camera.x;
+            const worldY = (e.clientY - canvas.height / 2) / camera.zoom + camera.y;
+            selectCellAt(worldX, worldY);
+        });
+
+        canvas.addEventListener("touchstart", (e) => {
+            if (!gameRunning || isPaused || e.touches.length === 0) return;
+            const t = e.touches[0];
+            const worldX = (t.clientX - canvas.width / 2) / camera.zoom + camera.x;
+            const worldY = (t.clientY - canvas.height / 2) / camera.zoom + camera.y;
+            selectCellAt(worldX, worldY);
+        }, { passive: true });
+
+        window.addEventListener("wheel", (e) => {
+            if (!gameRunning) return;
+            e.preventDefault();
+            const factor = e.deltaY < 0 ? USER_ZOOM_STEP : (1 / USER_ZOOM_STEP);
+            camera.userZoom = Math.max(USER_ZOOM_MIN, Math.min(USER_ZOOM_MAX, camera.userZoom * factor));
+            mousePos.x = (e.clientX - canvas.width / 2) / camera.zoom + camera.x;
+            mousePos.y = (e.clientY - canvas.height / 2) / camera.zoom + camera.y;
+        }, { passive: false });
 
         // Initialize food elements
         function initFoods() {
@@ -725,6 +1115,49 @@
             };
         }
 
+        function createCancerCell(overrides = {}) {
+            const mass = overrides.mass ?? (0.85 + Math.random() * 0.55 + currentStage * 0.16);
+            return {
+                x: overrides.x ?? ((Math.random() * 2 - 1) * (WORLD_SIZE - 260)),
+                y: overrides.y ?? ((Math.random() * 2 - 1) * (WORLD_SIZE - 260)),
+                vx: overrides.vx ?? 0,
+                vy: overrides.vy ?? 0,
+                lastVx: 0,
+                lastVy: 0,
+                mass: mass,
+                radius: 38 * Math.sqrt(mass),
+                typeName: "cancer",
+                color: "rgba(168, 85, 247, 0.88)",
+                nucleusColor: "rgba(76, 29, 149, 0.98)",
+                wobbleSpeed: 5.4,
+                wobbleAmp: 0.055,
+                wobbleFreq: 11,
+                nucleusOffsetX: 0,
+                nucleusOffsetY: 0,
+                nucleusVx: 0,
+                nucleusVy: 0,
+                squishOffsetX: 1,
+                squishOffsetY: 0,
+                squishAmount: 0,
+                squishVx: 0,
+                targetSteeringX: 0,
+                targetSteeringY: 0,
+                steeringTimer: 0,
+                infectCooldown: 0
+            };
+        }
+
+        function convertEnemyToCancer(enemy) {
+            const converted = createCancerCell({
+                x: enemy.x,
+                y: enemy.y,
+                vx: enemy.vx * 0.7,
+                vy: enemy.vy * 0.7,
+                mass: Math.max(0.75, enemy.mass * 0.92)
+            });
+            Object.assign(enemy, converted);
+        }
+
         // Split trigger
         function triggerSplit() {
             if (playerCells.length >= 16) return;
@@ -753,7 +1186,7 @@
                     const spawnY = cell.y + splitDirY * offset;
 
                     // Eject with speed boost
-                    const splitCell = {
+                    const splitCell = createPlayerCell({
                         x: spawnX,
                         y: spawnY,
                         vx: cell.vx + splitDirX * 12.0,
@@ -761,7 +1194,7 @@
                         lastVx: cell.vx,
                         lastVy: cell.vy,
                         mass: halfMass,
-                        radius: cell.radius,
+                        cellTypeId: cell.cellTypeId,
                         nucleusOffsetX: cell.nucleusOffsetX,
                         nucleusOffsetY: cell.nucleusOffsetY,
                         nucleusVx: 0,
@@ -775,7 +1208,7 @@
                         wobbleAmp: cell.wobbleAmp || 0.035,
                         wobbleFreq: cell.wobbleFreq || 8,
                         mergeCooldown: 720 // 12 seconds at 60fps
-                    };
+                    });
 
                     // Recoil original cell
                     cell.vx -= splitDirX * 3.0;
@@ -790,6 +1223,8 @@
             }
 
             playerCells.push(...newSplits);
+            focusedCellIndex = Math.min(focusedCellIndex, playerCells.length - 1);
+            updateControlModeUI();
             updateTotalPlayerMass();
         }
 
@@ -829,45 +1264,47 @@
 
         // Projectile Q firing
         function triggerProjectile() {
-            // Find largest cell
             if (playerCells.length === 0) return;
-            let largest = playerCells[0];
-            for (let i = 0; i < playerCells.length; i++) {
-                if (playerCells[i].mass > largest.mass) largest = playerCells[i];
-            }
-
-            if (largest.mass < 0.25 || largest.sporeMode) return;
-
-            // Spend 5% mass of largest cell
-            const cost = largest.mass * 0.05;
-            largest.mass -= cost;
-            largest.radius = 38 * Math.sqrt(largest.mass);
-            updateTotalPlayerMass();
-
-            // Fire angle
-            const dx = mousePos.x - largest.x;
-            const dy = mousePos.y - largest.y;
-            const len = Math.sqrt(dx * dx + dy * dy);
-            const dirX = len > 0 ? dx / len : 1;
-            const dirY = len > 0 ? dy / len : 0;
 
             const radScale = mutations.acid_projectile_boost ? 1.5 : 1.0;
+            let hasFired = false;
 
-            projectiles.push({
-                x: largest.x + dirX * (largest.radius + 15),
-                y: largest.y + dirY * (largest.radius + 15),
-                vx: dirX * 16.0,
-                vy: dirY * 16.0,
-                radius: 12 * radScale,
-                lifetime: 180 // 3 seconds
+            playerCells.forEach(cell => {
+                if (cell.mass < 0.25 || cell.sporeMode) return;
+                const cellType = getCellType(cell.cellTypeId);
+
+                const cost = cell.mass * 0.05;
+                cell.mass -= cost;
+                cell.radius = 38 * Math.sqrt(cell.mass);
+
+                const dx = mousePos.x - cell.x;
+                const dy = mousePos.y - cell.y;
+                const len = Math.sqrt(dx * dx + dy * dy);
+                const dirX = len > 0 ? dx / len : 1;
+                const dirY = len > 0 ? dy / len : 0;
+
+                projectiles.push({
+                    x: cell.x + dirX * (cell.radius + 15),
+                    y: cell.y + dirY * (cell.radius + 15),
+                    vx: dirX * 16.0,
+                    vy: dirY * 16.0,
+                    radius: 12 * radScale * Math.max(0.9, Math.min(1.25, cellType.acidPower)),
+                    acidPower: cellType.acidPower,
+                    lifetime: 180 // 3 seconds
+                });
+
+                // Backwards recoil
+                cell.vx -= dirX * 5.0;
+                cell.vy -= dirY * 5.0;
+                cell.squishOffsetX = dirX;
+                cell.squishOffsetY = dirY;
+                cell.squishAmount = 0.25;
+                hasFired = true;
             });
 
-            // Backwards recoil
-            largest.vx -= dirX * 5.0;
-            largest.vy -= dirY * 5.0;
-            largest.squishOffsetX = dirX;
-            largest.squishOffsetY = dirY;
-            largest.squishAmount = 0.25;
+            if (hasFired) {
+                updateTotalPlayerMass();
+            }
         }
 
         // Toggle Spore Mode E
@@ -879,7 +1316,288 @@
             }
         }
 
+        function toggleControlMode() {
+            controlMode = controlMode === "manual" ? "auto" : "manual";
+            updateControlModeUI();
+        }
+
+        function cycleFocusedCell() {
+            if (playerCells.length === 0) return;
+            focusedCellIndex = (focusedCellIndex + 1) % playerCells.length;
+            updateControlModeUI();
+        }
+
+        function selectCellAt(x, y) {
+            if (playerCells.length === 0) return;
+
+            let bestIndex = -1;
+            let bestDist = Infinity;
+            for (let i = 0; i < playerCells.length; i++) {
+                const cell = playerCells[i];
+                const dist = Math.hypot(cell.x - x, cell.y - y);
+                const pickRadius = Math.max(cell.radius * 1.35, 44);
+                if (dist < pickRadius && dist < bestDist) {
+                    bestDist = dist;
+                    bestIndex = i;
+                }
+            }
+
+            if (bestIndex >= 0) {
+                focusedCellIndex = bestIndex;
+                updateControlModeUI();
+            }
+        }
+
+        function triggerRecombine() {
+            if (playerCells.length < 2) return;
+
+            focusedCellIndex = Math.max(0, Math.min(focusedCellIndex, playerCells.length - 1));
+            const primary = playerCells[focusedCellIndex];
+            let target = null;
+            let bestDist = Infinity;
+
+            playerCells.forEach(cell => {
+                if (cell === primary) return;
+                const dist = Math.hypot(cell.x - primary.x, cell.y - primary.y);
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    target = cell;
+                }
+            });
+
+            if (!target) return;
+            primary.mergeCooldown = 0;
+            target.mergeCooldown = 0;
+            recombinePair = { primary, target };
+            updateControlModeUI();
+        }
+
+        function isRecombinePair(cellA, cellB) {
+            if (!recombinePair) return false;
+            return (recombinePair.primary === cellA && recombinePair.target === cellB) ||
+                (recombinePair.primary === cellB && recombinePair.target === cellA);
+        }
+
+        function processRecombinePair(dt) {
+            if (!recombinePair) return;
+            const primary = recombinePair.primary;
+            const target = recombinePair.target;
+            if (!playerCells.includes(primary) || !playerCells.includes(target)) {
+                recombinePair = null;
+                return;
+            }
+
+            const dx = target.x - primary.x;
+            const dy = target.y - primary.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist < 0.001) return;
+
+            const dirX = dx / dist;
+            const dirY = dy / dist;
+            const pull = Math.min(0.52, 140 / Math.max(dist, 80)) * dt;
+            primary.vx += dirX * pull / Math.sqrt(primary.mass);
+            primary.vy += dirY * pull / Math.sqrt(primary.mass);
+            target.vx -= dirX * pull / Math.sqrt(target.mass);
+            target.vy -= dirY * pull / Math.sqrt(target.mass);
+
+            const mergeDist = (primary.radius + target.radius) * 0.62;
+            if (dist <= mergeDist) {
+                completeRecombine(primary, target, dirX, dirY);
+            }
+        }
+
+        function completeRecombine(primary, target, dirX, dirY) {
+            const effectX = (primary.x + target.x) / 2;
+            const effectY = (primary.y + target.y) / 2;
+            const primaryMass = primary.mass;
+            const targetMass = target.mass;
+            mergeEffects.push({
+                x: effectX,
+                y: effectY,
+                radius: Math.max(primary.radius, target.radius) + 34,
+                age: 0,
+                duration: 34,
+                dirX,
+                dirY
+            });
+
+            primary.mass = primaryMass + targetMass;
+            primary.radius = 38 * Math.sqrt(primary.mass);
+            primary.squishAmount = 0.36;
+            primary.squishOffsetX = dirX;
+            primary.squishOffsetY = dirY;
+            primary.vx = (primary.vx * primaryMass + target.vx * targetMass) / Math.max(primary.mass, 0.01);
+            primary.vy = (primary.vy * primaryMass + target.vy * targetMass) / Math.max(primary.mass, 0.01);
+
+            if (target.pets && target.pets.length > 0) {
+                if (!primary.pets) primary.pets = [];
+                primary.pets.push(...target.pets);
+            }
+
+            playerCells = playerCells.filter(c => c !== target);
+            recombinePair = null;
+            focusedCellIndex = playerCells.indexOf(primary);
+            if (focusedCellIndex < 0) focusedCellIndex = 0;
+            updateControlModeUI();
+            updateTotalPlayerMass();
+        }
+
+        function toggleHelpPanel() {
+            helpVisible = !helpVisible;
+            helpPanel.classList.toggle("hidden", !helpVisible);
+        }
+
+        function showHelpForOpeningSeconds() {
+            helpVisible = true;
+            helpPanel.classList.remove("hidden");
+            if (helpHideTimer) clearTimeout(helpHideTimer);
+            helpHideTimer = setTimeout(() => {
+                helpVisible = false;
+                helpPanel.classList.add("hidden");
+            }, 5000);
+        }
+
+        function updateControlModeUI() {
+            focusedCellIndex = Math.max(0, Math.min(focusedCellIndex, Math.max(playerCells.length - 1, 0)));
+            const isAuto = controlMode === "auto";
+            controlModeText.innerText = isAuto ? "AI 본능 조작 중" : "수동 조작";
+            controlModeText.style.color = isAuto ? "var(--accent-gold)" : "var(--accent-blue)";
+            const recombineText = recombinePair ? "\nR: 재결합 진행 중" : "\nR: 가까운 세포 재결합";
+            focusCellText.innerText = `포커스 세포: ${playerCells.length ? focusedCellIndex + 1 : 0} / ${playerCells.length}\nM: AI 전환 | Tab/클릭: 포커스${recombineText}`;
+        }
+
+        function calculateManualInput() {
+            let inputX = 0;
+            let inputY = 0;
+
+            if (keys['w'] || keys['ArrowUp']) inputY -= 1;
+            if (keys['s'] || keys['ArrowDown']) inputY += 1;
+            if (keys['a'] || keys['ArrowLeft']) inputX -= 1;
+            if (keys['d'] || keys['ArrowRight']) inputX += 1;
+
+            const len = Math.hypot(inputX, inputY);
+            if (len > 0.001) {
+                inputX /= len;
+                inputY /= len;
+            }
+            return { x: inputX, y: inputY };
+        }
+
+        function calculateAutoInput(cell) {
+            let desiredX = 0;
+            let desiredY = 0;
+
+            foods.forEach(f => {
+                const dx = f.x - cell.x;
+                const dy = f.y - cell.y;
+                const dist = Math.hypot(dx, dy);
+                if (dist < 0.001 || dist > 1050) return;
+
+                const proximity = 1.0 - dist / 1050;
+                const value = f.value || 1.0;
+                const weight = value * proximity * proximity * 2.0;
+                desiredX += (dx / dist) * weight;
+                desiredY += (dy / dist) * weight;
+            });
+
+            enemies.forEach(e => {
+                const dx = e.x - cell.x;
+                const dy = e.y - cell.y;
+                const dist = Math.hypot(dx, dy);
+                if (dist < 0.001 || dist > 850) return;
+
+                const proximity = 1.0 - dist / 850;
+                if (e.typeName === "cancer") {
+                    const danger = 6.0 + currentStage * 0.45;
+                    desiredX -= (dx / dist) * danger * proximity * proximity;
+                    desiredY -= (dy / dist) * danger * proximity * proximity;
+                    return;
+                }
+
+                if (cell.mass > e.mass * 1.15) {
+                    const preyValue = Math.max(0.2, Math.min(2.0, e.mass / Math.max(cell.mass, 0.1)));
+                    desiredX += (dx / dist) * preyValue * proximity * 1.8;
+                    desiredY += (dy / dist) * preyValue * proximity * 1.8;
+                } else if (e.mass > cell.mass * 0.95) {
+                    const danger = Math.max(0.8, Math.min(4.0, e.mass / Math.max(cell.mass, 0.1)));
+                    desiredX -= (dx / dist) * danger * proximity * proximity * 4.5;
+                    desiredY -= (dy / dist) * danger * proximity * proximity * 4.5;
+                }
+            });
+
+            if (!mutations.rigid_cell_wall) {
+                saltZones.forEach(sz => {
+                    const dx = cell.x - sz.x;
+                    const dy = cell.y - sz.y;
+                    const dist = Math.hypot(dx, dy);
+                    const outer = sz.radius + 520;
+                    if (dist > outer) return;
+
+                    const risk = 1.0 - dist / outer;
+                    const dirX = dist > 0.001 ? dx / dist : 1;
+                    const dirY = dist > 0.001 ? dy / dist : 0;
+                    desiredX += dirX * risk * risk * 5.0;
+                    desiredY += dirY * risk * risk * 5.0;
+                });
+            }
+
+            vortices.forEach(v => {
+                const dx = cell.x - v.x;
+                const dy = cell.y - v.y;
+                const dist = Math.hypot(dx, dy);
+                const outer = v.radius + 320;
+                if (dist < 0.001 || dist > outer) return;
+
+                const force = 1.0 - dist / outer;
+                const awayX = dx / dist;
+                const awayY = dy / dist;
+                const tangentX = -awayY;
+                const tangentY = awayX;
+                if (cell.mass >= 2.4) {
+                    desiredX += tangentX * force * 1.4 + awayX * force * 0.6;
+                    desiredY += tangentY * force * 1.4 + awayY * force * 0.6;
+                } else {
+                    desiredX += awayX * force * 2.4;
+                    desiredY += awayY * force * 2.4;
+                }
+            });
+
+            if (playerCells.length > 1) {
+                let centerX = 0;
+                let centerY = 0;
+                playerCells.forEach(c => {
+                    centerX += c.x;
+                    centerY += c.y;
+                });
+                centerX /= playerCells.length;
+                centerY /= playerCells.length;
+
+                const dx = centerX - cell.x;
+                const dy = centerY - cell.y;
+                const dist = Math.hypot(dx, dy);
+                if (dist > 180) {
+                    desiredX += (dx / dist) * 0.9;
+                    desiredY += (dy / dist) * 0.9;
+                }
+            }
+
+            const len = Math.hypot(desiredX, desiredY);
+            if (len < 0.001) {
+                const driftLen = Math.hypot(cell.vx, cell.vy);
+                if (driftLen > 0.001) return { x: cell.vx / driftLen, y: cell.vy / driftLen };
+                return { x: 1, y: 0 };
+            }
+            return { x: desiredX / len, y: desiredY / len };
+        }
+
         // Update score & mass
+        function updateStageUI() {
+            stageText.innerText = currentStage;
+            stageTargetText.innerText = `${getStageTargetMass().toFixed(2)}x`;
+            cancerRiskText.innerText = getCancerRiskLabel();
+            tokenText.innerText = progress.tokens;
+        }
+
         function updateTotalPlayerMass() {
             let sum = 0;
             for (let i = 0; i < playerCells.length; i++) {
@@ -888,6 +1606,13 @@
             totalPlayerMass = sum;
             scoreText.innerText = score;
             sizeText.innerText = totalPlayerMass.toFixed(2) + "x";
+            updateStageUI();
+
+            if (enforceStageMassLimit()) return;
+            if (totalPlayerMass >= getStageTargetMass() - STAGE_MASS_EPSILON) {
+                checkStageClear();
+                return;
+            }
 
             // Check mutations milestones
             for (let i = 0; i < mutationMilestones.length; i++) {
@@ -897,6 +1622,36 @@
                     triggerMutationSelection();
                 }
             }
+        }
+
+        function checkStageClear() {
+            if (stageClearLocked || !gameRunning || isPaused) return;
+            if (enforceStageMassLimit()) return;
+            if (totalPlayerMass < getStageTargetMass() - STAGE_MASS_EPSILON) return;
+
+            stageClearLocked = true;
+            const clearedStage = currentStage;
+            const earnedTokens = Math.max(1, clearedStage);
+            progress.tokens += earnedTokens;
+            saveProgress();
+            currentStage += 1;
+            showMenu(
+                `Stage ${clearedStage} Clear`,
+                `스테이지 안전 한계에 도달했습니다. 토큰 ${earnedTokens}개를 획득했습니다. 다음 스테이지부터 암세포 발생과 암세포화 확률이 상승합니다.`,
+                `Stage ${currentStage} 시작`
+            );
+            updateStageUI();
+        }
+
+        function triggerGameOver(reason) {
+            gameRunning = false;
+            isPaused = false;
+            currentStage = 1;
+            showMenu(
+                "실험 종료 (게임 오버)",
+                `${reason}\n최종 점수: ${score}점 | 최종 성장: ${totalPlayerMass.toFixed(2)}x`,
+                "Stage 1 재시작"
+            );
         }
 
         // Roguelike Mutation Modal Popups
@@ -961,7 +1716,7 @@
 
             // 1. Offscreen predators (Red)
             enemies.forEach(e => {
-                if (e.typeName !== "predator") return;
+                if (e.typeName !== "predator" && e.typeName !== "cancer") return;
                 
                 const dx = e.x - playerCenter.x;
                 const dy = e.y - playerCenter.y;
@@ -988,12 +1743,14 @@
                         ctx.lineTo(-6, -10);
                         ctx.lineTo(-6, 10);
                         ctx.closePath();
-                        ctx.fillStyle = `rgba(244, 63, 94, ${0.4 + Math.sin(Date.now() / 150) * 0.3})`;
+                        ctx.fillStyle = e.typeName === "cancer"
+                            ? `rgba(168, 85, 247, ${0.5 + Math.sin(Date.now() / 120) * 0.32})`
+                            : `rgba(244, 63, 94, ${0.4 + Math.sin(Date.now() / 150) * 0.3})`;
                         ctx.fill();
 
                         ctx.fillStyle = "white";
                         ctx.font = "bold 9px sans-serif";
-                        ctx.fillText("WARN", -26, 3);
+                        ctx.fillText(e.typeName === "cancer" ? "CANCER" : "WARN", -30, 3);
                         ctx.restore();
                     }
                 }
@@ -1028,6 +1785,127 @@
                     }
                 }
             });
+        }
+
+        function maxCancerCellsForStage() {
+            return Math.min(8, 1 + Math.floor(currentStage / 2));
+        }
+
+        function scheduleNextCancerSpawn() {
+            cancerSpawnTimer = Math.max(150, 760 - currentStage * 58) + Math.random() * 220;
+        }
+
+        function maybeSpawnCancer(dt) {
+            cancerSpawnTimer -= dt;
+            if (cancerSpawnTimer > 0) return;
+
+            const cancerCount = enemies.filter(e => e.typeName === "cancer").length;
+            if (cancerCount < maxCancerCellsForStage()) {
+                const spawnChance = Math.min(0.86, 0.22 + currentStage * 0.07);
+                if (Math.random() < spawnChance) {
+                    enemies.push(createCancerCell());
+                }
+            }
+            scheduleNextCancerSpawn();
+        }
+
+        function pushCancerBurst(x, y, radius, infected) {
+            mergeEffects.push({
+                x,
+                y,
+                radius: radius + 36,
+                age: 0,
+                duration: infected ? 46 : 32,
+                dirX: 0,
+                dirY: -1,
+                color: infected ? "rgba(168, 85, 247, 0.9)" : "rgba(244, 63, 94, 0.9)",
+                fillColor: infected ? "rgba(216, 180, 254, 0.28)" : "rgba(251, 113, 133, 0.24)"
+            });
+        }
+
+        function removePlayerCellAt(index) {
+            const removed = playerCells[index];
+            playerCells.splice(index, 1);
+            if (recombinePair && (recombinePair.primary === removed || recombinePair.target === removed)) {
+                recombinePair = null;
+            }
+            focusedCellIndex = Math.max(0, Math.min(focusedCellIndex, Math.max(playerCells.length - 1, 0)));
+            updateControlModeUI();
+            updateTotalPlayerMass();
+            return removed;
+        }
+
+        function handleCancerPlayerContact(cancer, cellIndex) {
+            const cell = playerCells[cellIndex];
+            if (!cell || cancer.infectCooldown > 0 || cancerContactCooldown > 0) return;
+
+            if (playerCells.length <= 1) {
+                pushCancerBurst(cell.x, cell.y, cell.radius, true);
+                triggerGameOver("단일 세포가 암세포와 접촉해 실험체 전체가 암세포화되었습니다.");
+                return;
+            }
+
+            const infectionChance = getCancerInfectionChance(cell);
+            const infected = Math.random() < infectionChance;
+            const removed = removePlayerCellAt(cellIndex);
+            if (infected) {
+                enemies.push(createCancerCell({
+                    x: removed.x,
+                    y: removed.y,
+                    vx: removed.vx * 0.35,
+                    vy: removed.vy * 0.35,
+                    mass: Math.max(0.65, removed.mass * 0.9)
+                }));
+            } else {
+                cancer.mass += removed.mass * 0.18;
+                cancer.radius = 38 * Math.sqrt(cancer.mass);
+            }
+
+            cancer.squishAmount = 0.38;
+            cancer.infectCooldown = 95;
+            cancerContactCooldown = 30;
+            pushCancerBurst(removed.x, removed.y, removed.radius, infected);
+        }
+
+        function processCancerSpread(dt) {
+            cancerContactCooldown = Math.max(0, cancerContactCooldown - dt);
+
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const cancer = enemies[i];
+                if (cancer.typeName !== "cancer") continue;
+                cancer.infectCooldown = Math.max(0, (cancer.infectCooldown || 0) - dt);
+
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const other = enemies[j];
+                    if (i === j || other.typeName === "cancer") continue;
+                    const dx = other.x - cancer.x;
+                    const dy = other.y - cancer.y;
+                    const dist = Math.hypot(dx, dy);
+                    if (dist < (other.radius + cancer.radius) * 0.72) {
+                        if (Math.random() < Math.min(0.72, 0.16 + currentStage * 0.055)) {
+                            convertEnemyToCancer(other);
+                            pushCancerBurst(other.x, other.y, other.radius, true);
+                        } else {
+                            other.mass *= 0.82;
+                            other.radius = 38 * Math.sqrt(other.mass);
+                        }
+                    }
+                }
+
+                for (let j = foods.length - 1; j >= 0; j--) {
+                    const f = foods[j];
+                    const dx = f.x - cancer.x;
+                    const dy = f.y - cancer.y;
+                    if (Math.hypot(dx, dy) < cancer.radius + f.radius * 0.7) {
+                        cancer.mass += f.value * 0.035;
+                        cancer.radius = 38 * Math.sqrt(cancer.mass);
+                        foods.splice(j, 1);
+                        if (Math.random() < Math.min(0.36, 0.06 + currentStage * 0.025)) {
+                            enemies.push(createCancerCell({ x: f.x, y: f.y, mass: 0.55 + f.value * 0.22 }));
+                        }
+                    }
+                }
+            }
         }
 
         // Draw static grid and Osmotic zones
@@ -1127,6 +2005,75 @@
             });
         }
 
+        function renderMenu(title = null, desc = null, buttonText = null) {
+            const titleEl = document.querySelector(".menu-title");
+            const descEl = document.querySelector(".menu-desc");
+            if (title) titleEl.innerText = title;
+            if (desc) descEl.innerText = desc;
+            if (buttonText) startBtn.innerText = buttonText;
+
+            menuStatus.innerHTML = `
+                <span class="menu-pill">Stage ${currentStage}</span>
+                <span class="menu-pill">안전 한계 ${getStageTargetMass().toFixed(2)}x</span>
+                <span class="menu-pill">보유 토큰 ${progress.tokens}</span>
+                <span class="menu-pill">암세포 위험 ${getCancerRiskLabel()}</span>
+            `;
+
+            cellSelectGrid.innerHTML = "";
+            CELL_TYPES.filter(t => isCellUnlocked(t.id)).forEach(type => {
+                const card = document.createElement("button");
+                card.className = "cell-card" + (selectedCellTypeId === type.id ? " selected" : "");
+                card.innerHTML = `
+                    <div class="cell-card-name"><span>${type.name}</span><span>${selectedCellTypeId === type.id ? "선택됨" : "선택"}</span></div>
+                    <div class="cell-card-desc">${type.desc}</div>
+                    <div class="cell-card-meta">속도 ${Math.round(type.speed * 100)} · 리소좀 ${Math.round(type.acidPower * 100)} · 암저항 ${Math.round(type.cancerResist * 100)}</div>
+                `;
+                card.addEventListener("click", () => {
+                    selectedCellTypeId = type.id;
+                    progress.selectedCellTypeId = type.id;
+                    saveProgress();
+                    renderMenu();
+                    updateStageUI();
+                });
+                cellSelectGrid.appendChild(card);
+            });
+
+            storeGrid.innerHTML = "";
+            CELL_TYPES.filter(t => t.cost > 0).forEach(type => {
+                const unlocked = isCellUnlocked(type.id);
+                const affordable = progress.tokens >= type.cost;
+                const card = document.createElement("button");
+                card.className = "cell-card" + (unlocked ? " selected" : " locked");
+                card.innerHTML = `
+                    <div class="cell-card-name"><span>${type.name}</span><span>${unlocked ? "보유" : `${type.cost} 토큰`}</span></div>
+                    <div class="cell-card-desc">${type.desc}</div>
+                    <div class="cell-card-meta">${unlocked ? "구매 완료" : affordable ? "구매 가능" : "토큰 부족"}</div>
+                `;
+                card.addEventListener("click", () => {
+                    if (unlocked) {
+                        selectedCellTypeId = type.id;
+                        progress.selectedCellTypeId = type.id;
+                    } else if (affordable) {
+                        progress.tokens -= type.cost;
+                        progress.unlockedCellTypeIds.push(type.id);
+                        selectedCellTypeId = type.id;
+                        progress.selectedCellTypeId = type.id;
+                    }
+                    saveProgress();
+                    renderMenu();
+                    updateStageUI();
+                });
+                storeGrid.appendChild(card);
+            });
+        }
+
+        function showMenu(title, desc, buttonText) {
+            gameRunning = false;
+            isPaused = false;
+            menuOverlay.classList.remove("hidden");
+            renderMenu(title, desc, buttonText);
+        }
+
         // Start Game click
         startBtn.addEventListener("click", () => {
             menuOverlay.classList.add("hidden");
@@ -1135,33 +2082,17 @@
         });
 
         function resetGame() {
-            playerCells = [{
-                x: 0,
-                y: 0,
-                vx: 0,
-                vy: 0,
-                lastVx: 0,
-                lastVy: 0,
-                mass: 1.0,
-                radius: 38,
-                nucleusOffsetX: -0.05,
-                nucleusOffsetY: -0.05,
-                nucleusVx: 0,
-                nucleusVy: 0,
-                squishOffsetX: 1,
-                squishOffsetY: 0,
-                squishAmount: 0,
-                squishVx: 0,
-                sporeMode: false,
-                wobbleSpeed: 3.5,
-                wobbleAmp: 0.035,
-                wobbleFreq: 8,
-                mergeCooldown: 0,
-                pets: [] // array of orbiting pets: { angle }
-            }];
+            playerCells = [createPlayerCell()];
 
             score = 0;
-            totalPlayerMass = 1.0;
+            totalPlayerMass = playerCells[0].mass;
+            stageClearLocked = false;
+            cancerSpawnTimer = Math.max(180, 760 - currentStage * 55);
+            cancerContactCooldown = 0;
+            controlMode = "manual";
+            focusedCellIndex = 0;
+            recombinePair = null;
+            mergeEffects = [];
             triggeredMilestones = [];
             projectiles = [];
             
@@ -1180,16 +2111,20 @@
             document.getElementById("badge-none").style.display = "block";
 
             scoreText.innerText = "0";
-            sizeText.innerText = "1.00x";
+            sizeText.innerText = totalPlayerMass.toFixed(2) + "x";
+            updateStageUI();
             
             camera.x = 0;
             camera.y = 0;
             camera.zoom = 1.0;
             camera.targetZoom = 1.0;
+            camera.userZoom = 1.0;
             
             initZones();
             initFoods();
             initEnemies();
+            updateControlModeUI();
+            showHelpForOpeningSeconds();
         }
 
         let lastTime = 0;
@@ -1210,25 +2145,15 @@
         // Update Physics / Mechanics
         function update(dt) {
             // --- 1. Player Key Acceleration Control ---
-            let inputX = 0;
-            let inputY = 0;
-
-            if (keys['w'] || keys['ArrowUp']) inputY -= 1;
-            if (keys['s'] || keys['ArrowDown']) inputY += 1;
-            if (keys['a'] || keys['ArrowLeft']) inputX -= 1;
-            if (keys['d'] || keys['ArrowRight']) inputX += 1;
-
-            if (inputX !== 0 || inputY !== 0) {
-                const len = Math.sqrt(inputX * inputX + inputY * inputY);
-                inputX /= len;
-                inputY /= len;
-            }
+            const manualInput = calculateManualInput();
+            focusedCellIndex = Math.max(0, Math.min(focusedCellIndex, Math.max(playerCells.length - 1, 0)));
 
             // Cilia braking status
             const isBraking = keys['control'] || keys['Control'];
 
             // Loop and move player cells
-            playerCells.forEach(cell => {
+            playerCells.forEach((cell, idx) => {
+                const cellType = getCellType(cell.cellTypeId);
                 if (cell.sporeMode) {
                     // Friction is heavy, halts movement
                     cell.vx -= cell.vx * 0.2 * dt;
@@ -1238,9 +2163,20 @@
                     cell.mass -= 0.005 * cell.mass * 0.016 * dt;
                     cell.radius = 38 * Math.sqrt(cell.mass);
                 } else {
+                    let inputX = 0;
+                    let inputY = 0;
+                    if (controlMode === "auto") {
+                        const autoInput = calculateAutoInput(cell);
+                        inputX = autoInput.x;
+                        inputY = autoInput.y;
+                    } else if (playerCells.length === 1 || idx === focusedCellIndex) {
+                        inputX = manualInput.x;
+                        inputY = manualInput.y;
+                    }
+
                     // Apply acceleration
                     if (inputX !== 0 || inputY !== 0) {
-                        const cellAccel = (PLAYER_ACCEL / Math.sqrt(cell.mass)) * dt;
+                        const cellAccel = (PLAYER_ACCEL * cellType.accel / Math.sqrt(cell.mass)) * dt;
                         cell.vx += inputX * cellAccel;
                         cell.vy += inputY * cellAccel;
                     }
@@ -1268,7 +2204,7 @@
                     }
 
                     // Limit speed
-                    let speedLimit = PLAYER_MAX_SPEED / Math.sqrt(cell.mass);
+                    let speedLimit = (PLAYER_MAX_SPEED * cellType.speed) / Math.sqrt(cell.mass);
                     if (mutations.rigid_cell_wall) speedLimit *= 1.3;
 
                     const speedNew = Math.sqrt(cell.vx * cell.vx + cell.vy * cell.vy);
@@ -1381,6 +2317,12 @@
                 }
             }
 
+            processRecombinePair(dt);
+            mergeEffects.forEach(effect => {
+                effect.age += dt;
+            });
+            mergeEffects = mergeEffects.filter(effect => effect.age < effect.duration);
+
             // --- 3. Merge split cells back together ---
             let mergedCells = [];
             for (let i = 0; i < playerCells.length; i++) {
@@ -1390,6 +2332,7 @@
                 for (let j = i + 1; j < playerCells.length; j++) {
                     const cellB = playerCells[j];
                     if (cellB.mergeCooldown > 0 || mergedCells.includes(cellB)) continue;
+                    if (isRecombinePair(cellA, cellB)) continue;
 
                     const dist = Math.sqrt((cellA.x - cellB.x) * (cellA.x - cellB.x) + (cellA.y - cellB.y) * (cellA.y - cellB.y));
                     if (dist < (cellA.radius + cellB.radius) * 0.45) {
@@ -1411,7 +2354,9 @@
                 }
             }
             playerCells = playerCells.filter(c => !mergedCells.includes(c));
+            focusedCellIndex = Math.max(0, Math.min(focusedCellIndex, Math.max(playerCells.length - 1, 0)));
             if (mergedCells.length > 0) {
+                updateControlModeUI();
                 updateTotalPlayerMass();
             }
 
@@ -1506,7 +2451,10 @@
                     const dist = Math.sqrt(dx * dx + dy * dy);
                     const isPlayerLarger = targetCell.mass > e.mass;
 
-                    if (e.typeName === "predator") {
+                    if (e.typeName === "cancer") {
+                        e.vx += (dx / dist) * (NPC_STEERING_FORCE * 1.75) * dt;
+                        e.vy += (dy / dist) * (NPC_STEERING_FORCE * 1.75) * dt;
+                    } else if (e.typeName === "predator") {
                         if (isPlayerLarger) {
                             // Flee from player
                             e.vx -= (dx / dist) * NPC_STEERING_FORCE * dt;
@@ -1533,6 +2481,23 @@
                     e.vy += e.targetSteeringY * dt;
                 }
 
+                if (e.typeName === "cancer") {
+                    let nearestEnemy = null;
+                    let nearestDist = 999999.0;
+                    enemies.forEach(other => {
+                        if (other === e || other.typeName === "cancer") return;
+                        const dist = Math.hypot(other.x - e.x, other.y - e.y);
+                        if (dist < nearestDist && dist < 520) {
+                            nearestDist = dist;
+                            nearestEnemy = other;
+                        }
+                    });
+                    if (nearestEnemy && !targetCell) {
+                        e.vx += ((nearestEnemy.x - e.x) / nearestDist) * NPC_STEERING_FORCE * dt;
+                        e.vy += ((nearestEnemy.y - e.y) / nearestDist) * NPC_STEERING_FORCE * dt;
+                    }
+                }
+
                 // Apply drag
                 e.vx -= e.vx * NPC_FRICTION * dt;
                 e.vy -= e.vy * NPC_FRICTION * dt;
@@ -1540,6 +2505,7 @@
                 // Speed limit
                 let speedLimit = NPC_MAX_SPEED / Math.sqrt(e.mass);
                 if (e.typeName === "runner") speedLimit *= 1.4;
+                if (e.typeName === "cancer") speedLimit *= 1.18 + Math.min(0.35, currentStage * 0.035);
                 
                 const speed = Math.sqrt(e.vx * e.vx + e.vy * e.vy);
                 if (speed > speedLimit) {
@@ -1602,6 +2568,9 @@
                 e.squishAmount = Math.max(-0.4, Math.min(0.4, e.squishAmount));
             });
 
+            maybeSpawnCancer(dt);
+            processCancerSpread(dt);
+
             // --- 7. Projectile mechanics ---
             for (let i = projectiles.length - 1; i >= 0; i--) {
                 const p = projectiles[i];
@@ -1620,7 +2589,9 @@
 
                     if (dist < e.radius + p.radius) {
                         // Impact! Melt mass by 30% (45% with mutation)
-                        const shrink = mutations.acid_projectile_boost ? 0.55 : 0.70;
+                        const acidPower = p.acidPower || 1.0;
+                        const baseShrink = mutations.acid_projectile_boost ? 0.55 : 0.70;
+                        const shrink = Math.max(0.28, baseShrink / acidPower - (e.typeName === "cancer" ? 0.10 : 0.0));
                         e.mass *= shrink;
                         e.radius = 38 * Math.sqrt(e.mass);
 
@@ -1630,6 +2601,12 @@
                         e.squishAmount = -0.3;
                         e.squishOffsetX = p.vx;
                         e.squishOffsetY = p.vy;
+
+                        if (e.mass < (e.typeName === "cancer" ? 0.32 : 0.22)) {
+                            score += e.typeName === "cancer" ? 140 + currentStage * 20 : 45;
+                            pushCancerBurst(e.x, e.y, e.radius, e.typeName === "cancer");
+                            enemies.splice(j, 1);
+                        }
 
                         hit = true;
                         break;
@@ -1737,8 +2714,7 @@
                     if (dist < cell.radius && !cell.sporeMode) {
                         // Eat food!
                         score += Math.round(f.value * 10);
-                        cell.mass += f.value * 0.08;
-                        cell.radius = 38 * Math.sqrt(cell.mass);
+                        addPlayerGrowth(cell, f.value * 0.08);
                         cell.squishAmount = 0.15;
                         
                         // Symbiont Pet spawn check
@@ -1792,11 +2768,15 @@
 
                     const dist = Math.sqrt((cell.x - e.x) * (cell.x - e.x) + (cell.y - e.y) * (cell.y - e.y));
                     if (dist < cell.radius + e.radius) {
+                        if (e.typeName === "cancer") {
+                            handleCancerPlayerContact(e, j);
+                            break;
+                        }
+
                         // Check sizing (15% difference needed)
                         if (cell.mass > e.mass * 1.15) {
                             // Player eats enemy
-                            cell.mass += e.mass * 0.4;
-                            cell.radius = 38 * Math.sqrt(cell.mass);
+                            addPlayerGrowth(cell, e.mass * 0.4);
                             cell.squishAmount = 0.35;
                             cell.squishOffsetX = e.x - cell.x;
                             cell.squishOffsetY = e.y - cell.y;
@@ -1832,20 +2812,18 @@
 
             // Game over check
             if (playerCells.length === 0) {
-                gameRunning = false;
-                menuOverlay.classList.remove("hidden");
-                document.querySelector(".menu-title").innerText = "실험 종료 (게임 오버)";
-                document.querySelector(".menu-desc").innerText = `세포 활동이 정지했습니다. 포식자에 의해 모든 세포 조각이 흡수당했습니다.\n최종 점수: ${score}점 | 최종 성장: ${totalPlayerMass.toFixed(2)}x`;
-                document.querySelector("#start-btn").innerText = "실험 재시작";
+                triggerGameOver("세포 활동이 정지했습니다. 포식자 또는 암세포에 의해 모든 세포 조각이 소실되었습니다.");
                 return;
             }
 
             updateTotalPlayerMass();
+            checkStageClear();
+            if (!gameRunning) return;
 
             // --- 12. Camera tracking average center ---
             let avgX = 0;
             let avgY = 0;
-            playerCells.forEach(cell => {
+            playerCells.forEach((cell, idx) => {
                 avgX += cell.x;
                 avgY += cell.y;
             });
@@ -1857,7 +2835,7 @@
 
             // Bounding box for spread zoom adjustment
             let maxDist = 0;
-            playerCells.forEach(cell => {
+            playerCells.forEach((cell, idx) => {
                 const dist = Math.sqrt((cell.x - avgX)*(cell.x - avgX) + (cell.y - avgY)*(cell.y - avgY)) + cell.radius;
                 if (dist > maxDist) maxDist = dist;
             });
@@ -1866,7 +2844,7 @@
             if (maxDist > 250) {
                 zoomVal *= (250 / maxDist);
             }
-            camera.targetZoom = Math.max(0.22, Math.min(1.2, zoomVal));
+            camera.targetZoom = Math.max(0.12, Math.min(2.4, zoomVal * camera.userZoom));
             camera.zoom += (camera.targetZoom - camera.zoom) * 0.05 * dt;
         }
 
@@ -1886,6 +2864,18 @@
 
             // 2. Draw vortices
             drawVortices(ctx, time);
+
+            if (recombinePair && playerCells.includes(recombinePair.primary) && playerCells.includes(recombinePair.target)) {
+                const a = recombinePair.primary;
+                const b = recombinePair.target;
+                const pulse = Math.sin(time * 10) * 0.5 + 0.5;
+                ctx.beginPath();
+                ctx.moveTo(a.x, a.y);
+                ctx.lineTo(b.x, b.y);
+                ctx.lineWidth = 5 / Math.max(camera.zoom, 0.35);
+                ctx.strokeStyle = `rgba(125, 255, 210, ${0.28 + pulse * 0.28})`;
+                ctx.stroke();
+            }
 
             // 3. Draw food items
             foods.forEach((f, idx) => {
@@ -1907,6 +2897,21 @@
                 ctx.stroke();
             });
 
+            mergeEffects.forEach(effect => {
+                const t = Math.min(effect.age / effect.duration, 1);
+                const alpha = 1 - t;
+                ctx.beginPath();
+                ctx.arc(effect.x, effect.y, effect.radius * (0.35 + t * 1.15), 0, Math.PI * 2);
+                ctx.lineWidth = 5 / Math.max(camera.zoom, 0.35);
+                ctx.strokeStyle = effect.color || `rgba(125, 255, 210, ${alpha * 0.9})`;
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(effect.x + effect.dirX * 20 * (1 - t), effect.y + effect.dirY * 20 * (1 - t), effect.radius * (0.22 + t * 0.2), 0, Math.PI * 2);
+                ctx.fillStyle = effect.fillColor || `rgba(180, 255, 230, ${alpha * 0.28})`;
+                ctx.fill();
+            });
+
             // 5. Draw enemies (Predators & Runners)
             enemies.forEach((e, idx) => {
                 drawWobblyCell(
@@ -1914,6 +2919,15 @@
                     time + idx, e.wobbleFreq, e.wobbleAmp, e.wobbleSpeed,
                     e.nucleusOffsetX, e.nucleusOffsetY
                 );
+
+                if (e.typeName === "cancer") {
+                    const pulse = Math.sin(time * 9 + idx) * 0.5 + 0.5;
+                    ctx.beginPath();
+                    ctx.arc(e.x, e.y, e.radius + 7 + pulse * 4, 0, Math.PI * 2);
+                    ctx.lineWidth = 3 / Math.max(camera.zoom, 0.35);
+                    ctx.strokeStyle = `rgba(216, 180, 254, ${0.32 + pulse * 0.32})`;
+                    ctx.stroke();
+                }
 
                 // Add squish deformations
                 ctx.save();
@@ -1926,10 +2940,11 @@
             });
 
             // 6. Draw player cells
-            playerCells.forEach(cell => {
+            playerCells.forEach((cell, idx) => {
+                const cellType = getCellType(cell.cellTypeId);
                 // Determine color (brown in spore mode)
-                let cColor = cell.sporeMode ? "rgba(100, 75, 55, 0.9)" : "rgba(56, 189, 248, 0.85)";
-                let nColor = cell.sporeMode ? "rgba(60, 40, 25, 0.95)" : "rgba(14, 116, 144, 0.9)";
+                let cColor = cell.sporeMode ? "rgba(100, 75, 55, 0.9)" : cellType.body;
+                let nColor = cell.sporeMode ? "rgba(60, 40, 25, 0.95)" : cellType.nucleus;
 
                 // Dynamic cell body wobbly drawing with squish deformations
                 ctx.save();
@@ -1954,6 +2969,16 @@
                     ctx.lineWidth = 5;
                     ctx.strokeStyle = "rgba(160, 120, 90, 0.9)";
                     ctx.stroke();
+                }
+
+                if (idx === focusedCellIndex) {
+                    ctx.beginPath();
+                    ctx.arc(cell.x, cell.y, cell.radius + 10, 0, Math.PI * 2);
+                    ctx.lineWidth = 3 / Math.max(camera.zoom, 0.35);
+                    ctx.setLineDash([10 / Math.max(camera.zoom, 0.35), 8 / Math.max(camera.zoom, 0.35)]);
+                    ctx.strokeStyle = controlMode === "auto" ? "rgba(245, 158, 11, 0.95)" : "rgba(56, 189, 248, 0.95)";
+                    ctx.stroke();
+                    ctx.setLineDash([]);
                 }
 
                 ctx.restore();
@@ -1992,6 +3017,12 @@
         initZones();
         initFoods();
         initEnemies();
+        updateStageUI();
+        renderMenu(
+            "세포 키우기",
+            "스테이지 안전 한계까지 성장해 토큰을 얻고, 스토어에서 새 세포를 해금하십시오. 한계를 초과한 세포는 파열됩니다.",
+            "Stage 1 시작"
+        );
         requestAnimationFrame((t) => {
             lastTime = t;
             requestAnimationFrame(loop);

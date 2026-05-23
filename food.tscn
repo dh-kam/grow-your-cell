@@ -7,11 +7,16 @@
 shader = ExtResource("2_shader")
 shader_parameter/cell_color = Color(0.8, 0.3, 0.3, 1.0)
 shader_parameter/nucleus_color = Color(0.5, 0.1, 0.1, 1.0)
+shader_parameter/membrane_color = Color(1.0, 0.82, 0.82, 0.9)
+shader_parameter/granule_color = Color(1.0, 0.95, 0.82, 0.22)
+shader_parameter/nucleolus_color = Color(0.18, 0.04, 0.04, 0.95)
 shader_parameter/wobble_speed = 4.0
 shader_parameter/wobble_amplitude = 0.04
 shader_parameter/wobble_frequency = 6.0
-shader_parameter/nucleus_offset_x = 0.02
-shader_parameter/nucleus_offset_y = 0.02
+shader_parameter/nucleus_offset = Vector2(0.02, 0.02)
+shader_parameter/membrane_thickness = 0.022
+shader_parameter/cytoplasm_noise = 0.07
+shader_parameter/granule_density = 0.22
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_food"]
 radius = 15.0

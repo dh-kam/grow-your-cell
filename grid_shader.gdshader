@@ -25,13 +25,13 @@ void fragment() {
     // --- DRAW OSMOTIC SALT ZONES ---
     // Salt Zone 1: World position (2500 - 900, 2500 - 800) = (1600, 1700), Radius = 400
     float d1 = distance(pos, vec2(1600.0, 1700.0));
-    float fill1 = (1.0 - smoothstep(400.0, 385.0, d1)) * 0.15;
-    float ring1 = (smoothstep(403.0, 400.0, d1) - smoothstep(400.0, 397.0, d1)) * 0.4;
+    float fill1 = (1.0 - smoothstep(385.0, 400.0, d1)) * 0.15;
+    float ring1 = (smoothstep(397.0, 400.0, d1) - smoothstep(400.0, 403.0, d1)) * 0.4;
     
     // Salt Zone 2: World position (2500 + 900, 2500 + 800) = (3400, 3300), Radius = 400
     float d2 = distance(pos, vec2(3400.0, 3300.0));
-    float fill2 = (1.0 - smoothstep(400.0, 385.0, d2)) * 0.15;
-    float ring2 = (smoothstep(403.0, 400.0, d2) - smoothstep(400.0, 397.0, d2)) * 0.4;
+    float fill2 = (1.0 - smoothstep(385.0, 400.0, d2)) * 0.15;
+    float ring2 = (smoothstep(397.0, 400.0, d2) - smoothstep(400.0, 403.0, d2)) * 0.4;
     
     // Blend osmotic zones (Vibrant glowing orange)
     vec4 salt_color = vec4(0.9, 0.35, 0.1, 1.0);

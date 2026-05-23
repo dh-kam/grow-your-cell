@@ -20,6 +20,11 @@ const S_SPRING = 35.0
 const S_DAMPING = 5.0
 const S_INERTIA = 0.0012
 
+var absorb_timer = 0.0
+var absorb_duration = 0.5
+var absorb_strength = 0.0
+var absorb_dir = Vector2.RIGHT
+
 @onready var color_rect = $ColorRect
 @onready var collision_shape = $CollisionShape2D
 
@@ -85,6 +90,16 @@ func _process(delta):
         color_rect.material.set_shader_parameter("squish_dir", squish_dir)
         color_rect.material.set_shader_parameter("squish_amount", squish_amount)
 
+        if absorb_timer > 0.0:
+            absorb_timer = max(absorb_timer - delta, 0.0)
+            var absorb_progress = 1.0 - (absorb_timer / max(absorb_duration, 0.001))
+            color_rect.material.set_shader_parameter("absorb_dir", absorb_dir)
+            color_rect.material.set_shader_parameter("absorb_progress", absorb_progress)
+            color_rect.material.set_shader_parameter("absorb_strength", absorb_strength)
+        else:
+            color_rect.material.set_shader_parameter("absorb_progress", 0.0)
+            color_rect.material.set_shader_parameter("absorb_strength", 0.0)
+
 func set_spore_mode(enabled: bool):
     if color_rect and color_rect.material:
         color_rect.material.set_shader_parameter("spore_mode", 1.0 if enabled else 0.0)
@@ -94,27 +109,28 @@ func trigger_impact(impact_vector: Vector2, impact_force: float):
     squish_dir = impact_vector.normalized()
     squish_vel = -impact_force * 0.2
 
+func trigger_absorption(direction: Vector2, strength: float, duration: float):
+    absorb_dir = direction.normalized() if direction.length() > 0.001 else Vector2.RIGHT
+    absorb_strength = strength
+    absorb_duration = max(duration, 0.001)
+    absorb_timer = absorb_duration
+    trigger_impact(absorb_dir, 18.0 + strength * 24.0)
+
 func _on_area_entered(area):
     if area.is_in_group("food"):
+        if area.is_queued_for_deletion():
+            return
+        if area.get("is_absorbing") == true:
+            return
+
         # Detect Spore mode safety
         var p_controller = get_parent()
         if p_controller and p_controller.get("is_spore_mode") == true:
             return # Spore mode cannot eat/react
-            
-        var f_type = area.get("food_type")
-        var f_val = area.value
-        area.queue_free()
-        
-        # Grow locally
-        add_mass(f_val * 0.08)
-        trigger_impact(area.global_position - global_position, 15.0)
-        
-        # Report growth to master controller
-        if p_controller and p_controller.has_method("add_player_mass"):
-            p_controller.add_player_mass(f_val * 0.08)
-            
-            # If eaten a symbiotic pet, attach it!
-            if f_type == "symbiont" and p_controller.get("pets").size() < 3:
-                var pet_scene = load("res://pet.tscn")
-                var pet = pet_scene.instantiate()
-                p_controller.attach_pet(pet)
+
+        if p_controller and p_controller.has_method("start_food_absorb"):
+            p_controller.start_food_absorb(self, area)
+        else:
+            var growth = area.value * 0.08
+            area.queue_free()
+            add_mass(growth)

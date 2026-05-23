@@ -1,8 +1,11 @@
-[gd_scene load_steps=10 format=3 uid="uid://b2g27hsgq483"]
+[gd_scene load_steps=15 format=3 uid="uid://b2g27hsgq483"]
 
 [ext_resource type="Script" path="res://main.gd" id="1_main"]
 [ext_resource type="PackedScene" uid="uid://c6j27hsgq483" path="res://player.tscn" id="2_player"]
 [ext_resource type="Shader" path="res://grid_shader.gdshader" id="3_grid_shader"]
+[ext_resource type="FontFile" path="res://assets/fonts/BagelFatOne-Regular.ttf" id="4_title_font"]
+[ext_resource type="FontFile" path="res://assets/fonts/NotoSansKR-wght.ttf" id="5_ui_font"]
+[ext_resource type="FontFile" path="res://assets/fonts/Outfit-wght.ttf" id="6_outfit_font"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_grid"]
 shader = ExtResource("3_grid_shader")
@@ -11,30 +14,49 @@ shader_parameter/grid_color = Color(0.16, 0.18, 0.23, 1.0)
 shader_parameter/grid_size = 100.0
 shader_parameter/line_thickness = 1.5
 
+[sub_resource type="LabelSettings" id="LabelSettings_brand_title"]
+font = ExtResource("4_title_font")
+font_size = 30
+font_color = Color(0.66, 0.93, 1.0, 1.0)
+outline_size = 6
+outline_color = Color(0.0, 0.0, 0.0, 1.0)
+
+[sub_resource type="LabelSettings" id="LabelSettings_brand_subtitle"]
+font = ExtResource("6_outfit_font")
+font_size = 12
+font_color = Color(0.75, 0.85, 0.9, 1.0)
+outline_size = 3
+outline_color = Color(0.0, 0.0, 0.0, 1.0)
+
 [sub_resource type="LabelSettings" id="LabelSettings_score"]
+font = ExtResource("6_outfit_font")
 font_size = 28
 outline_size = 6
 outline_color = Color(0.0, 0.0, 0.0, 1.0)
 
 [sub_resource type="LabelSettings" id="LabelSettings_size"]
+font = ExtResource("6_outfit_font")
 font_size = 18
 font_color = Color(0.8, 0.8, 0.8, 1.0)
 outline_size = 4
 outline_color = Color(0.0, 0.0, 0.0, 1.0)
 
 [sub_resource type="LabelSettings" id="LabelSettings_instr"]
+font = ExtResource("5_ui_font")
 font_size = 14
 font_color = Color(0.6, 0.6, 0.6, 1.0)
 outline_size = 2
 outline_color = Color(0.0, 0.0, 0.0, 1.0)
 
 [sub_resource type="LabelSettings" id="LabelSettings_mut_title"]
+font = ExtResource("4_title_font")
 font_size = 32
 font_color = Color(0.2, 0.7, 0.9, 1.0)
 outline_size = 6
 outline_color = Color(0.0, 0.0, 0.0, 1.0)
 
 [sub_resource type="LabelSettings" id="LabelSettings_mut_subtitle"]
+font = ExtResource("5_ui_font")
 font_size = 16
 font_color = Color(0.8, 0.8, 0.8, 1.0)
 
@@ -65,13 +87,23 @@ mouse_filter = 2
 [node name="MarginContainer" type="MarginContainer" parent="CanvasLayer/Control"]
 layout_mode = 1
 offset_right = 350.0
-offset_bottom = 200.0
+offset_bottom = 250.0
 theme_override_constants/margin_left = 20
 theme_override_constants/margin_top = 20
 
 [node name="VBoxContainer" type="VBoxContainer" parent="CanvasLayer/Control/MarginContainer"]
 layout_mode = 2
 theme_override_constants/separation = 5
+
+[node name="BrandTitle" type="Label" parent="CanvasLayer/Control/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "세포 키우기"
+label_settings = SubResource("LabelSettings_brand_title")
+
+[node name="BrandSubtitle" type="Label" parent="CanvasLayer/Control/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Grow your cell"
+label_settings = SubResource("LabelSettings_brand_subtitle")
 
 [node name="ScoreLabel" type="Label" parent="CanvasLayer/Control/MarginContainer/VBoxContainer"]
 layout_mode = 2
@@ -83,12 +115,23 @@ layout_mode = 2
 text = "Size: 1.00x"
 label_settings = SubResource("LabelSettings_size")
 
+[node name="MoveModeLabel" type="Label" parent="CanvasLayer/Control/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Mode: Manual"
+label_settings = SubResource("LabelSettings_size")
+
 [node name="Instructions" type="Label" parent="CanvasLayer/Control/MarginContainer/VBoxContainer"]
 layout_mode = 2
 text = "Move: WASD / Arrows
+AI Instinct: M
+Focus Cell: Tab / Click
+Zoom: Mouse Wheel
 Dash: Shift | Shoot Acid: Q
 Spore Mode: E | Cilia Brake: Ctrl
-Split Mitosis: Spacebar"
+Split Mitosis: Spacebar
+Recombine: R
+Cancer cells: avoid purple cells / shoot Q
+Help: H / F1"
 label_settings = SubResource("LabelSettings_instr")
 
 [node name="MutationUI" type="Control" parent="CanvasLayer/Control"]

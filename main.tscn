@@ -1,0 +1,141 @@
+[gd_scene load_steps=10 format=3 uid="uid://b2g27hsgq483"]
+
+[ext_resource type="Script" path="res://main.gd" id="1_main"]
+[ext_resource type="PackedScene" uid="uid://c6j27hsgq483" path="res://player.tscn" id="2_player"]
+[ext_resource type="Shader" path="res://grid_shader.gdshader" id="3_grid_shader"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_grid"]
+shader = ExtResource("3_grid_shader")
+shader_parameter/bg_color = Color(0.08, 0.09, 0.12, 1.0)
+shader_parameter/grid_color = Color(0.16, 0.18, 0.23, 1.0)
+shader_parameter/grid_size = 100.0
+shader_parameter/line_thickness = 1.5
+
+[sub_resource type="LabelSettings" id="LabelSettings_score"]
+font_size = 28
+outline_size = 6
+outline_color = Color(0.0, 0.0, 0.0, 1.0)
+
+[sub_resource type="LabelSettings" id="LabelSettings_size"]
+font_size = 18
+font_color = Color(0.8, 0.8, 0.8, 1.0)
+outline_size = 4
+outline_color = Color(0.0, 0.0, 0.0, 1.0)
+
+[sub_resource type="LabelSettings" id="LabelSettings_instr"]
+font_size = 14
+font_color = Color(0.6, 0.6, 0.6, 1.0)
+outline_size = 2
+outline_color = Color(0.0, 0.0, 0.0, 1.0)
+
+[sub_resource type="LabelSettings" id="LabelSettings_mut_title"]
+font_size = 32
+font_color = Color(0.2, 0.7, 0.9, 1.0)
+outline_size = 6
+outline_color = Color(0.0, 0.0, 0.0, 1.0)
+
+[sub_resource type="LabelSettings" id="LabelSettings_mut_subtitle"]
+font_size = 16
+font_color = Color(0.8, 0.8, 0.8, 1.0)
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_main")
+
+[node name="Background" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_grid")
+offset_left = -2500.0
+offset_top = -2500.0
+offset_right = 2500.0
+offset_bottom = 2500.0
+mouse_filter = 2
+
+[node name="Player" parent="." instance=ExtResource("2_player")]
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="Control" type="Control" parent="CanvasLayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="CanvasLayer/Control"]
+layout_mode = 1
+offset_right = 350.0
+offset_bottom = 200.0
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CanvasLayer/Control/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="ScoreLabel" type="Label" parent="CanvasLayer/Control/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Score: 0"
+label_settings = SubResource("LabelSettings_score")
+
+[node name="SizeLabel" type="Label" parent="CanvasLayer/Control/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Size: 1.00x"
+label_settings = SubResource("LabelSettings_size")
+
+[node name="Instructions" type="Label" parent="CanvasLayer/Control/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Move: WASD / Arrows
+Dash: Shift | Shoot Acid: Q
+Spore Mode: E | Cilia Brake: Ctrl
+Split Mitosis: Spacebar"
+label_settings = SubResource("LabelSettings_instr")
+
+[node name="MutationUI" type="Control" parent="CanvasLayer/Control"]
+process_mode = 3
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Overlay" type="ColorRect" parent="CanvasLayer/Control/MutationUI"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.04, 0.05, 0.08, 0.8)
+
+[node name="CenterContainer" type="CenterContainer" parent="CanvasLayer/Control/MutationUI"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CanvasLayer/Control/MutationUI/CenterContainer"]
+layout_mode = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="Title" type="Label" parent="CanvasLayer/Control/MutationUI/CenterContainer/VBoxContainer"]
+layout_mode = 2
+text = "세포 유전 돌연변이 발현!"
+label_settings = SubResource("LabelSettings_mut_title")
+alignment = 1
+
+[node name="Subtitle" type="Label" parent="CanvasLayer/Control/MutationUI/CenterContainer/VBoxContainer"]
+layout_mode = 2
+text = "세포핵의 크기가 한계치에 도달했습니다. 새로운 형질을 발현하십시오:"
+label_settings = SubResource("LabelSettings_mut_subtitle")
+alignment = 1
+
+[node name="CardContainer" type="HBoxContainer" parent="CanvasLayer/Control/MutationUI/CenterContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 25
+alignment = 1

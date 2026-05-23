@@ -1,0 +1,14 @@
+# Godot build and import cache
+.godot/
+*.translation
+
+# Node package dependencies
+node_modules/
+package-lock.json
+
+# Local log files and debugging configurations
+*.log
+.antigravitycli/
+scratch/
+check_temp.js
+get_console_logs.js

@@ -1,0 +1,2001 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>세포 키우기 게임 (Cell Growth Game)</title>
+    <!-- Modern Premium Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+KR:wght@300;400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #050608;
+            --panel-bg: rgba(16, 20, 30, 0.65);
+            --panel-border: rgba(255, 255, 255, 0.08);
+            --accent-blue: #38bdf8;
+            --accent-pink: #f43f5e;
+            --accent-gold: #f59e0b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            font-family: 'Outfit', 'Noto Sans KR', sans-serif;
+            color: var(--text-main);
+            user-select: none;
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Glassmorphism UI Panels */
+        .ui-panel {
+            position: absolute;
+            background: var(--panel-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            padding: 16px 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            z-index: 10;
+            pointer-events: auto;
+        }
+
+        /* Top-left score panel */
+        #score-panel {
+            top: 24px;
+            left: 24px;
+            min-width: 200px;
+            animation: slideIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        h1 {
+            font-size: 1rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--accent-blue);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .score-value {
+            font-size: 2rem;
+            font-weight: 800;
+            line-height: 1.2;
+            background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        /* Help panel on top-right */
+        #help-panel {
+            top: 24px;
+            right: 24px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+            max-width: 320px;
+            animation: slideInRight 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .kbd {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+            padding: 1px 4px;
+            font-family: monospace;
+            color: var(--text-main);
+            font-weight: bold;
+        }
+
+        /* Active mutation panel */
+        #mutation-panel {
+            bottom: 24px;
+            left: 24px;
+            min-width: 220px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .mutation-badge {
+            font-size: 0.75rem;
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            color: var(--accent-blue);
+            padding: 4px 8px;
+            border-radius: 6px;
+            display: none;
+        }
+
+        /* Overlay for Initial Screen / Game Over */
+        #menu-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(4, 5, 8, 0.88);
+            backdrop-filter: blur(16px);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+            transition: opacity 0.5s ease;
+        }
+
+        #menu-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .menu-content {
+            max-width: 500px;
+            animation: scaleIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .menu-title {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 12px;
+            letter-spacing: -0.02em;
+        }
+
+        .menu-desc {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 32px;
+        }
+
+        .play-btn {
+            background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+            border: none;
+            color: white;
+            padding: 16px 40px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(56, 189, 248, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-family: inherit;
+        }
+
+        .play-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(56, 189, 248, 0.5);
+        }
+
+        /* Roguelike Mutation Modal (Full-Screen Overlay) */
+        #mutation-modal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(3, 4, 6, 0.85);
+            backdrop-filter: blur(20px);
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+
+        #mutation-modal.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-title {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--accent-blue);
+            margin-bottom: 8px;
+            letter-spacing: -0.01em;
+            text-align: center;
+        }
+
+        .modal-subtitle {
+            font-size: 1rem;
+            color: var(--text-muted);
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        .card-container {
+            display: flex;
+            gap: 24px;
+            max-width: 1000px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .mutation-card {
+            background: rgba(20, 26, 38, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 24px;
+            width: 260px;
+            min-height: 280px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .mutation-card:hover {
+            transform: translateY(-8px);
+            border-color: var(--accent-blue);
+            box-shadow: 0 12px 30px rgba(56, 189, 248, 0.2);
+            background: rgba(26, 34, 50, 0.9);
+        }
+
+        .card-icon {
+            width: 60px;
+            height: 60px;
+            background: rgba(56, 189, 248, 0.1);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent-blue);
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 16px;
+        }
+
+        .card-name {
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: var(--text-main);
+        }
+
+        .card-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin-bottom: 20px;
+            flex-grow: 1;
+        }
+
+        .select-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            padding: 8px 24px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            width: 100%;
+            transition: all 0.2s;
+        }
+
+        .mutation-card:hover .select-btn {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: #030712;
+            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.3);
+        }
+
+        /* Animations */
+        @keyframes slideIn {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes slideInRight {
+            from { transform: translateX(20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes scaleIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- UI Overlay Panels -->
+    <div id="score-panel" class="ui-panel">
+        <h1>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-activity"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            세포 활동
+        </h1>
+        <div id="score-text" class="score-value">0</div>
+        <div class="stat-row">
+            <span>총 세포 질량</span>
+            <span id="size-text" class="stat-value">1.00x</span>
+        </div>
+    </div>
+
+    <div id="help-panel" class="ui-panel">
+        <h1 style="color: var(--text-main); font-size: 0.9rem; margin-bottom: 6px;">기능 가이드</h1>
+        <p>• <span class="kbd">W</span><span class="kbd">A</span><span class="kbd">S</span><span class="kbd">D</span> : 관성 가속도 제어 (정지 없이 계속 표류)</p>
+        <p style="margin-top: 4px;">• <span class="kbd">SPACE</span> : <b>세포 분열 (Mitosis)</b> (반절 질량 방출 및 질주)</p>
+        <p style="margin-top: 4px;">• <span class="kbd">SHIFT</span> : <b>미토콘드리아 대시</b> (질량 4% 소모하여 질주)</p>
+        <p style="margin-top: 4px;">• <span class="kbd">Q</span> : <b>리소좀 산성 투사체</b> (마우스 방향 발사, 적 세포 수축)</p>
+        <p style="margin-top: 4px;">• <span class="kbd">E</span> : <b>포자화 (Sporulation)</b> (이동 불가 상태 무적 실드)</p>
+        <p style="margin-top: 4px;">• <span class="kbd">CTRL</span> : <b>섬모 제동 (Cilia Brake)</b> (마찰 급증, 정지/코너링)</p>
+    </div>
+
+    <!-- Active Mutations Dashboard -->
+    <div id="mutation-panel" class="ui-panel">
+        <h1 style="color: var(--accent-pink); font-size: 0.8rem; margin-bottom: 4px;">발현된 유전 돌연변이</h1>
+        <div id="badge-efficiency" class="mutation-badge">에너지 효율 (대시 질량소모 반감)</div>
+        <div id="badge-glycocalyx" class="mutation-badge">점착성 섬모 (펫 끌어당김 강화)</div>
+        <div id="badge-wall" class="mutation-badge">단단한 세포벽 (속도 +30% / 삼투압 면역)</div>
+        <div id="badge-lysosome" class="mutation-badge">강력한 리소좀 (포탄 크기/수축 강화)</div>
+        <div id="badge-none" style="font-size: 0.75rem; color: var(--text-muted);">발현된 특성 없음</div>
+    </div>
+
+    <!-- Menu Screen Overlay -->
+    <div id="menu-overlay">
+        <div class="menu-content">
+            <h2 class="menu-title">세포 키우기</h2>
+            <p class="menu-desc">생명 연장과 진화를 거듭하며 샬레 내부의 최고 포식자로 군림하십시오. 10가지 세포 기능(분열, 대시, 포탄 발사, 소용돌이, 삼투압 탈수대, 로그라이크 변이, 공생체 펫)이 모두 반영된 유기적 세포 역학을 체험하세요.</p>
+            <button id="start-btn" class="play-btn">실험 시작</button>
+        </div>
+    </div>
+
+    <!-- Roguelike Mutation Modal Overlay -->
+    <div id="mutation-modal">
+        <h2 class="modal-title">세포 유전 돌연변이 발현!</h2>
+        <p class="modal-subtitle">세포 크기가 성장의 특이점에 도달했습니다. 새로운 형질 하나를 발현하십시오:</p>
+        <div class="card-container" id="modal-card-container">
+            <!-- Cards will be populated dynamically -->
+        </div>
+    </div>
+
+    <!-- Canvas drawing area -->
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const startBtn = document.getElementById("start-btn");
+        const menuOverlay = document.getElementById("menu-overlay");
+        const scoreText = document.getElementById("score-text");
+        const sizeText = document.getElementById("size-text");
+        const mutationModal = document.getElementById("mutation-modal");
+        const modalCardContainer = document.getElementById("modal-card-container");
+
+        // Game Configuration
+        const WORLD_SIZE = 2400; // Plays from -2400 to 2400
+        const MAX_FOOD = 220;
+        const MAX_ENEMIES = 10;
+        
+        // Physics constants
+        const PLAYER_ACCEL = 0.28; // Reduced acceleration
+        const PLAYER_DEFAULT_FRICTION = 0.011; // Lower friction drag
+        const PLAYER_BRAKE_FRICTION = 0.15;
+        const PLAYER_MAX_SPEED = 8.0;
+
+        const NPC_STEERING_FORCE = 0.12;
+        const NPC_FRICTION = 0.015;
+        const NPC_MAX_SPEED = 2.0;
+
+        // Spring-damper Constants for Nucleus
+        const N_SPRING = 0.15;
+        const N_DAMPING = 0.08;
+        const N_INERTIA = 0.008;
+
+        // Spring-damper Constants for Squish Wobble
+        const S_SPRING = 0.12;
+        const S_DAMPING = 0.07;
+        const S_INERTIA = 0.025;
+
+        // State variables
+        let playerCells = []; // array of player cell pieces
+        let foods = [];
+        let enemies = [];
+        let projectiles = [];
+        let vortices = [];
+        let saltZones = [];
+        let keys = {};
+        let mousePos = { x: 0, y: 0 };
+        let gameRunning = false;
+        let isPaused = false;
+        let score = 0;
+        let totalPlayerMass = 1.0;
+        
+        // Active mutations
+        let mutations = {
+            mitochondria_efficiency: false, // half dash cost
+            sticky_glycocalyx: false,       // magnet x1.8 range
+            rigid_cell_wall: false,         // speed +30%, immune to salt
+            acid_projectile_boost: false    // projectile x1.5 size, 45% shrink instead of 30%
+        };
+        let mutationMilestones = [1.8, 3.5, 6.0];
+        let triggeredMilestones = [];
+
+        // Camera configuration
+        let camera = {
+            x: 0,
+            y: 0,
+            zoom: 1.0,
+            targetZoom: 1.0
+        };
+
+        // Static environmental zones definition
+        function initZones() {
+            // Osmotic salt zones
+            saltZones = [
+                { x: -900, y: -800, radius: 400 },
+                { x: 900, y: 800, radius: 400 }
+            ];
+
+            // Swirling fluid vortices
+            vortices = [
+                { x: -1400, y: 300, radius: 250, angle: 0 },
+                { x: 1000, y: -900, radius: 250, angle: 0 },
+                { x: 0, y: 1200, radius: 250, angle: 0 }
+            ];
+        }
+
+        // Resize Canvas
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener("resize", resizeCanvas);
+        resizeCanvas();
+
+        // Keyboard Controls
+        window.addEventListener("keydown", (e) => {
+            const key = e.key.toLowerCase();
+            keys[key] = true;
+            keys[e.key] = true;
+
+            if (!gameRunning || isPaused) return;
+
+            // Spacebar split
+            if (e.key === " ") {
+                e.preventDefault();
+                triggerSplit();
+            }
+            // Dash: Shift
+            if (e.key === "Shift") {
+                triggerDash();
+            }
+            // Projectile: Q
+            if (key === "q") {
+                triggerProjectile();
+            }
+            // Spore: E
+            if (key === "e") {
+                toggleSporeMode();
+            }
+        });
+        window.addEventListener("keyup", (e) => {
+            keys[e.key.toLowerCase()] = false;
+            keys[e.key] = false;
+        });
+
+        // Mouse motion tracking for aiming lysosome projectiles
+        window.addEventListener("mousemove", (e) => {
+            // Center of screen is (canvas.width/2, canvas.height/2)
+            // Relate screen mouse coordinates to world coordinates
+            mousePos.x = (e.clientX - canvas.width / 2) / camera.zoom + camera.x;
+            mousePos.y = (e.clientY - canvas.height / 2) / camera.zoom + camera.y;
+        });
+
+        // Initialize food elements
+        function initFoods() {
+            foods = [];
+            for (let i = 0; i < MAX_FOOD; i++) {
+                foods.push(createFood());
+            }
+        }
+
+        function createFood(forcedInSaltZone = false) {
+            let foodType = "standard";
+            let color = "";
+            let nucleusColor = "";
+            let value = 1.0;
+
+            // Determine type
+            const roll = Math.random();
+            if (roll < 0.05) {
+                foodType = "symbiont";
+                color = "rgba(34, 211, 238, 0.85)"; // Cyan
+                nucleusColor = "rgba(8, 145, 178, 0.95)";
+                value = 1.0;
+            } else if (roll < 0.20 || forcedInSaltZone) {
+                foodType = "golden";
+                color = "rgba(245, 158, 11, 0.9)"; // Gold
+                nucleusColor = "rgba(180, 83, 9, 0.95)";
+                value = 2.8;
+            } else {
+                foodType = "standard";
+                const r = Math.floor(Math.random() * 110) + 120;
+                const g = Math.floor(Math.random() * 110) + 100;
+                const b = Math.floor(Math.random() * 110) + 100;
+                color = `rgba(${r}, ${g}, ${b}, 0.85)`;
+                nucleusColor = `rgba(${Math.floor(r*0.5)}, ${Math.floor(g*0.5)}, ${Math.floor(b*0.5)}, 0.9)`;
+                value = 1.0;
+            }
+
+            const sizeMultiplier = Math.random() * 0.5 + 0.6; // 0.6 to 1.1
+            const baseRad = foodType === "golden" ? 22 : 14;
+            const radius = baseRad * sizeMultiplier;
+
+            let fx, fy;
+            if (forcedInSaltZone && saltZones.length > 0) {
+                const zone = saltZones[Math.floor(Math.random() * saltZones.length)];
+                const a = Math.random() * Math.PI * 2;
+                const r = Math.random() * zone.radius;
+                fx = zone.x + Math.cos(a) * r;
+                fy = zone.y + Math.sin(a) * r;
+            } else {
+                fx = (Math.random() * 2 - 1) * (WORLD_SIZE - 60);
+                fy = (Math.random() * 2 - 1) * (WORLD_SIZE - 60);
+            }
+
+            return {
+                x: fx,
+                y: fy,
+                vx: (Math.random() * 2 - 1) * 0.3,
+                vy: (Math.random() * 2 - 1) * 0.3,
+                lastVx: 0,
+                lastVy: 0,
+                radius: radius,
+                value: sizeMultiplier * value,
+                foodType: foodType,
+                color: color,
+                nucleusColor: nucleusColor,
+                wobbleSpeed: Math.random() * 3 + 2,
+                wobbleAmp: Math.random() * 0.02 + 0.02,
+                wobbleFreq: Math.floor(Math.random() * 5) + 5,
+                
+                nucleusOffsetX: 0,
+                nucleusOffsetY: 0,
+                nucleusVx: 0,
+                nucleusVy: 0,
+
+                targetSteeringX: 0,
+                targetSteeringY: 0,
+                steeringTimer: 0
+            };
+        }
+
+        function selectNPCSteering(f) {
+            const angle = Math.random() * Math.PI * 2;
+            const force = Math.random() * 0.08 + 0.04;
+            f.targetSteeringX = Math.cos(angle) * force;
+            f.targetSteeringY = Math.sin(angle) * force;
+            f.steeringTimer = Math.floor(Math.random() * 120) + 90;
+        }
+
+        // Draw wobbly circle + nucleus (Physical offset + micro wobble)
+        function drawWobblyCell(ctx, x, y, radius, color, nucleusColor, time, wobbleFreq, wobbleAmp, wobbleSpeed, nucleusOffsetX, nucleusOffsetY) {
+            ctx.save();
+            
+            // Draw Cell Body
+            ctx.beginPath();
+            const pointsCount = 100;
+            for (let i = 0; i <= pointsCount; i++) {
+                const angle = (i / pointsCount) * Math.PI * 2;
+                
+                // Mimic Godot shader wobble waves
+                const w1 = Math.sin(angle * wobbleFreq + time * wobbleSpeed);
+                const w2 = Math.cos(angle * (wobbleFreq * 0.5) - time * (wobbleSpeed * 0.7));
+                const wobble = (w1 + w2) * wobbleAmp * radius;
+                
+                const r = radius + wobble;
+                const px = x + Math.cos(angle) * r;
+                const py = y + Math.sin(angle) * r;
+                
+                if (i === 0) {
+                    ctx.moveTo(px, py);
+                } else {
+                    ctx.lineTo(px, py);
+                }
+            }
+            ctx.closePath();
+            
+            // Subtle glow/shadow
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = color;
+            ctx.fillStyle = color;
+            ctx.fill();
+            
+            // Remove shadow for inner cell structure
+            ctx.shadowBlur = 0;
+            
+            // Draw Nucleus (Physical offset + very small organic micro wobble)
+            const nOffsetX = nucleusOffsetX * radius + Math.sin(time * 1.5) * 0.015 * radius;
+            const nOffsetY = nucleusOffsetY * radius + Math.cos(time * 1.2) * 0.015 * radius;
+            const nX = x + nOffsetX;
+            const nY = y + nOffsetY;
+            const nRadius = radius * 0.32;
+
+            ctx.beginPath();
+            for (let i = 0; i <= pointsCount; i++) {
+                const angle = (i / pointsCount) * Math.PI * 2;
+                const nWobble = Math.sin(angle * 4 - time * wobbleSpeed * 0.8) * 0.06 * nRadius;
+                
+                const r = nRadius + nWobble;
+                const px = nX + Math.cos(angle) * r;
+                const py = nY + Math.sin(angle) * r;
+                
+                if (i === 0) {
+                    ctx.moveTo(px, py);
+                } else {
+                    ctx.lineTo(px, py);
+                }
+            }
+            ctx.closePath();
+            ctx.fillStyle = nucleusColor;
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        // Initialize Enemies
+        function initEnemies() {
+            enemies = [];
+            for (let i = 0; i < MAX_ENEMIES; i++) {
+                enemies.push(createEnemy());
+            }
+        }
+
+        function createEnemy() {
+            const isPredator = Math.random() > 0.45;
+            let typeName = isPredator ? "predator" : "runner";
+            let mass = isPredator ? Math.random() * 1.5 + 1.5 : Math.random() * 0.3 + 0.5;
+            let color = isPredator ? "rgba(225, 29, 72, 0.85)" : "rgba(34, 197, 94, 0.85)"; // rose vs green
+            let nucleusColor = isPredator ? "rgba(136, 19, 55, 0.95)" : "rgba(20, 83, 45, 0.95)";
+
+            return {
+                x: (Math.random() * 2 - 1) * (WORLD_SIZE - 200),
+                y: (Math.random() * 2 - 1) * (WORLD_SIZE - 200),
+                vx: 0,
+                vy: 0,
+                lastVx: 0,
+                lastVy: 0,
+                mass: mass,
+                radius: 38 * Math.sqrt(mass),
+                typeName: typeName,
+                color: color,
+                nucleusColor: nucleusColor,
+                wobbleSpeed: isPredator ? 2.5 : 4.5,
+                wobbleAmp: 0.03,
+                wobbleFreq: isPredator ? 7 : 9,
+                nucleusOffsetX: 0,
+                nucleusOffsetY: 0,
+                nucleusVx: 0,
+                nucleusVy: 0,
+                squishOffsetX: 1,
+                squishOffsetY: 0,
+                squishAmount: 0,
+                squishVx: 0,
+                targetSteeringX: 0,
+                targetSteeringY: 0,
+                steeringTimer: 0
+            };
+        }
+
+        // Split trigger
+        function triggerSplit() {
+            if (playerCells.length >= 16) return;
+            let newSplits = [];
+            
+            for (let i = 0; i < playerCells.length; i++) {
+                let cell = playerCells[i];
+                // Minimum mass to split (needs to be large enough)
+                if (cell.mass >= 0.35) {
+                    const halfMass = cell.mass / 2.0;
+                    cell.mass = halfMass;
+                    cell.radius = 38 * Math.sqrt(halfMass);
+
+                    // Determine split eject angle
+                    let splitAngle = Math.atan2(cell.vy, cell.vx);
+                    if (cell.vx === 0 && cell.vy === 0) {
+                        splitAngle = -Math.PI / 2; // Default up
+                    }
+
+                    const splitDirX = Math.cos(splitAngle);
+                    const splitDirY = Math.sin(splitAngle);
+
+                    // Offset new cell in front
+                    const offset = cell.radius * 1.2;
+                    const spawnX = cell.x + splitDirX * offset;
+                    const spawnY = cell.y + splitDirY * offset;
+
+                    // Eject with speed boost
+                    const splitCell = {
+                        x: spawnX,
+                        y: spawnY,
+                        vx: cell.vx + splitDirX * 12.0,
+                        vy: cell.vy + splitDirY * 12.0,
+                        lastVx: cell.vx,
+                        lastVy: cell.vy,
+                        mass: halfMass,
+                        radius: cell.radius,
+                        nucleusOffsetX: cell.nucleusOffsetX,
+                        nucleusOffsetY: cell.nucleusOffsetY,
+                        nucleusVx: 0,
+                        nucleusVy: 0,
+                        squishOffsetX: splitDirX,
+                        squishOffsetY: splitDirY,
+                        squishAmount: 0.3,
+                        squishVx: 0,
+                        sporeMode: false,
+                        wobbleSpeed: cell.wobbleSpeed || 3.5,
+                        wobbleAmp: cell.wobbleAmp || 0.035,
+                        wobbleFreq: cell.wobbleFreq || 8,
+                        mergeCooldown: 720 // 12 seconds at 60fps
+                    };
+
+                    // Recoil original cell
+                    cell.vx -= splitDirX * 3.0;
+                    cell.vy -= splitDirY * 3.0;
+                    cell.squishOffsetX = -splitDirX;
+                    cell.squishOffsetY = -splitDirY;
+                    cell.squishAmount = 0.3;
+                    cell.mergeCooldown = 720;
+
+                    newSplits.push(splitCell);
+                }
+            }
+
+            playerCells.push(...newSplits);
+            updateTotalPlayerMass();
+        }
+
+        // Dash trigger
+        function triggerDash() {
+            let costFactor = mutations.mitochondria_efficiency ? 0.02 : 0.04;
+            let hasDashed = false;
+
+            for (let i = 0; i < playerCells.length; i++) {
+                let cell = playerCells[i];
+                if (cell.mass > 0.15 && !cell.sporeMode) {
+                    cell.mass -= cell.mass * costFactor;
+                    cell.radius = 38 * Math.sqrt(cell.mass);
+
+                    let dx = cell.vx;
+                    let dy = cell.vy;
+                    let len = Math.sqrt(dx * dx + dy * dy);
+                    if (len === 0) { dx = 0; dy = -1; len = 1; }
+
+                    const pushX = dx / len;
+                    const pushY = dy / len;
+
+                    // Speed burst
+                    cell.vx += pushX * 12.0;
+                    cell.vy += pushY * 12.0;
+                    cell.squishOffsetX = -pushX;
+                    cell.squishOffsetY = -pushY;
+                    cell.squishAmount = 0.35;
+                    hasDashed = true;
+                }
+            }
+
+            if (hasDashed) {
+                updateTotalPlayerMass();
+            }
+        }
+
+        // Projectile Q firing
+        function triggerProjectile() {
+            // Find largest cell
+            if (playerCells.length === 0) return;
+            let largest = playerCells[0];
+            for (let i = 0; i < playerCells.length; i++) {
+                if (playerCells[i].mass > largest.mass) largest = playerCells[i];
+            }
+
+            if (largest.mass < 0.25 || largest.sporeMode) return;
+
+            // Spend 5% mass of largest cell
+            const cost = largest.mass * 0.05;
+            largest.mass -= cost;
+            largest.radius = 38 * Math.sqrt(largest.mass);
+            updateTotalPlayerMass();
+
+            // Fire angle
+            const dx = mousePos.x - largest.x;
+            const dy = mousePos.y - largest.y;
+            const len = Math.sqrt(dx * dx + dy * dy);
+            const dirX = len > 0 ? dx / len : 1;
+            const dirY = len > 0 ? dy / len : 0;
+
+            const radScale = mutations.acid_projectile_boost ? 1.5 : 1.0;
+
+            projectiles.push({
+                x: largest.x + dirX * (largest.radius + 15),
+                y: largest.y + dirY * (largest.radius + 15),
+                vx: dirX * 16.0,
+                vy: dirY * 16.0,
+                radius: 12 * radScale,
+                lifetime: 180 // 3 seconds
+            });
+
+            // Backwards recoil
+            largest.vx -= dirX * 5.0;
+            largest.vy -= dirY * 5.0;
+            largest.squishOffsetX = dirX;
+            largest.squishOffsetY = dirY;
+            largest.squishAmount = 0.25;
+        }
+
+        // Toggle Spore Mode E
+        function toggleSporeMode() {
+            // Switch spore modes
+            let targetState = !playerCells[0].sporeMode;
+            for (let i = 0; i < playerCells.length; i++) {
+                playerCells[i].sporeMode = targetState;
+            }
+        }
+
+        // Update score & mass
+        function updateTotalPlayerMass() {
+            let sum = 0;
+            for (let i = 0; i < playerCells.length; i++) {
+                sum += playerCells[i].mass;
+            }
+            totalPlayerMass = sum;
+            scoreText.innerText = score;
+            sizeText.innerText = totalPlayerMass.toFixed(2) + "x";
+
+            // Check mutations milestones
+            for (let i = 0; i < mutationMilestones.length; i++) {
+                const ms = mutationMilestones[i];
+                if (totalPlayerMass >= ms && !triggeredMilestones.includes(ms)) {
+                    triggeredMilestones.push(ms);
+                    triggerMutationSelection();
+                }
+            }
+        }
+
+        // Roguelike Mutation Modal Popups
+        function triggerMutationSelection() {
+            isPaused = true;
+            
+            // Get available pool
+            let available = [
+                { id: "mitochondria_efficiency", title: "에너지 효율 (미토콘드리아)", desc: "Shift 대시 대동하는 질량 소모률 50% 절감" },
+                { id: "sticky_glycocalyx", title: "점착성 섬모 (당외피)", desc: "주변 먹이를 자성으로 흡수하는 공생체(펫) 마그넷 반경 80% 강화" },
+                { id: "rigid_cell_wall", title: "단단한 세포벽", desc: "속도 한계치 30% 증가 및 삼투압 위험지대의 탈수 질량 감소 면역" },
+                { id: "acid_projectile_boost", title: "강력한 리소좀", desc: "Q 포탄 크기 50% 확장 및 타격 시 적 용해/수축 효과 증대" }
+            ].filter(m => !mutations[m.id]);
+
+            if (available.length === 0) {
+                isPaused = false;
+                return;
+            }
+
+            // Shuffle and pick 3
+            available.sort(() => Math.random() - 0.5);
+            const chosen = available.slice(0, Math.min(3, available.length));
+
+            // Populate cards HTML
+            modalCardContainer.innerHTML = "";
+            chosen.forEach(m => {
+                const card = document.createElement("div");
+                card.className = "mutation-card";
+                card.innerHTML = `
+                    <div class="card-icon">🧬</div>
+                    <div class="card-name">${m.title}</div>
+                    <div class="card-desc">${m.desc}</div>
+                    <button class="select-btn">특성 발현</button>
+                `;
+                card.addEventListener("click", () => selectMutation(m.id));
+                modalCardContainer.appendChild(card);
+            });
+
+            mutationModal.classList.add("active");
+        }
+
+        function selectMutation(mutId) {
+            mutations[mutId] = true;
+            // Activate badge
+            if (mutId === "mitochondria_efficiency") document.getElementById("badge-efficiency").style.display = "block";
+            if (mutId === "sticky_glycocalyx") document.getElementById("badge-glycocalyx").style.display = "block";
+            if (mutId === "rigid_cell_wall") document.getElementById("badge-wall").style.display = "block";
+            if (mutId === "acid_projectile_boost") document.getElementById("badge-lysosome").style.display = "block";
+            document.getElementById("badge-none").style.display = "none";
+
+            // Hide modal
+            mutationModal.classList.remove("active");
+            isPaused = false;
+        }
+
+        // Swelling dynamic indicators for offscreen objects
+        function drawScentIndicators(ctx, playerCenter) {
+            // Draw indicators at boundaries for nearby off-screen golden foods and large predators
+            const margin = 30;
+            const screenW = canvas.width;
+            const screenH = canvas.height;
+
+            // 1. Offscreen predators (Red)
+            enemies.forEach(e => {
+                if (e.typeName !== "predator") return;
+                
+                const dx = e.x - playerCenter.x;
+                const dy = e.y - playerCenter.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                // If close but off-screen
+                if (dist > 500 && dist < 1200) {
+                    const screenX = dx * camera.zoom + screenW / 2;
+                    const screenY = dy * camera.zoom + screenH / 2;
+
+                    // If outside viewport boundaries
+                    if (screenX < 0 || screenX > screenW || screenY < 0 || screenY > screenH) {
+                        const angle = Math.atan2(dy, dx);
+                        const edgeX = Math.max(margin, Math.min(screenW - margin, Math.cos(angle) * (screenW/2 - margin) + screenW/2));
+                        const edgeY = Math.max(margin, Math.min(screenH - margin, Math.sin(angle) * (screenH/2 - margin) + screenH/2));
+
+                        // Draw pulsing red indicator arrow
+                        ctx.save();
+                        ctx.translate(edgeX, edgeY);
+                        ctx.rotate(angle);
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(10, 0);
+                        ctx.lineTo(-6, -10);
+                        ctx.lineTo(-6, 10);
+                        ctx.closePath();
+                        ctx.fillStyle = `rgba(244, 63, 94, ${0.4 + Math.sin(Date.now() / 150) * 0.3})`;
+                        ctx.fill();
+
+                        ctx.fillStyle = "white";
+                        ctx.font = "bold 9px sans-serif";
+                        ctx.fillText("WARN", -26, 3);
+                        ctx.restore();
+                    }
+                }
+            });
+
+            // 2. Offscreen golden foods (Gold)
+            foods.forEach(f => {
+                if (f.foodType !== "golden") return;
+                
+                const dx = f.x - playerCenter.x;
+                const dy = f.y - playerCenter.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist > 450 && dist < 1000) {
+                    const screenX = dx * camera.zoom + screenW / 2;
+                    const screenY = dy * camera.zoom + screenH / 2;
+
+                    if (screenX < 0 || screenX > screenW || screenY < 0 || screenY > screenH) {
+                        const angle = Math.atan2(dy, dx);
+                        const edgeX = Math.max(margin, Math.min(screenW - margin, Math.cos(angle) * (screenW/2 - margin) + screenW/2));
+                        const edgeY = Math.max(margin, Math.min(screenH - margin, Math.sin(angle) * (screenH/2 - margin) + screenH/2));
+
+                        ctx.save();
+                        ctx.translate(edgeX, edgeY);
+                        ctx.rotate(angle);
+                        
+                        ctx.beginPath();
+                        ctx.arc(0, 0, 5, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(245, 158, 11, ${0.4 + Math.sin(Date.now() / 200) * 0.3})`;
+                        ctx.fill();
+                        ctx.restore();
+                    }
+                }
+            });
+        }
+
+        // Draw static grid and Osmotic zones
+        function drawGrid(ctx, camX, camY, zoom) {
+            ctx.save();
+            ctx.strokeStyle = "#12151d";
+            ctx.lineWidth = 1.5;
+
+            const gridSpacing = 100;
+            const left = camX - canvas.width / 2 / zoom;
+            const right = camX + canvas.width / 2 / zoom;
+            const top = camY - canvas.height / 2 / zoom;
+            const bottom = camY + canvas.height / 2 / zoom;
+
+            const startX = Math.max(-WORLD_SIZE, Math.floor(left / gridSpacing) * gridSpacing);
+            const endX = Math.min(WORLD_SIZE, Math.ceil(right / gridSpacing) * gridSpacing);
+            const startY = Math.max(-WORLD_SIZE, Math.floor(top / gridSpacing) * gridSpacing);
+            const endY = Math.min(WORLD_SIZE, Math.ceil(bottom / gridSpacing) * gridSpacing);
+
+            // Grid lines
+            for (let x = startX; x <= endX; x += gridSpacing) {
+                ctx.beginPath();
+                ctx.moveTo(x, Math.max(-WORLD_SIZE, top));
+                ctx.lineTo(x, Math.min(WORLD_SIZE, bottom));
+                ctx.stroke();
+            }
+            for (let y = startY; y <= endY; y += gridSpacing) {
+                ctx.beginPath();
+                ctx.moveTo(Math.max(-WORLD_SIZE, left), y);
+                ctx.lineTo(Math.min(WORLD_SIZE, right), y);
+                ctx.stroke();
+            }
+
+            // Draw Osmotic Salt Zones (Orange glows)
+            saltZones.forEach(sz => {
+                const dist = Math.sqrt((camX - sz.x) * (camX - sz.x) + (camY - sz.y) * (camY - sz.y));
+                if (dist < sz.radius + 1500) { // render if anywhere near screen
+                    // Fill orange glow
+                    ctx.beginPath();
+                    ctx.arc(sz.x, sz.y, sz.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = "rgba(245, 158, 11, 0.12)";
+                    ctx.fill();
+
+                    // Glowing border
+                    ctx.strokeStyle = "rgba(245, 158, 11, 0.4)";
+                    ctx.lineWidth = 4;
+                    ctx.stroke();
+                    
+                    // Danger label inside
+                    ctx.fillStyle = "rgba(245, 158, 11, 0.35)";
+                    ctx.font = "bold 24px sans-serif";
+                    ctx.textAlign = "center";
+                    ctx.fillText("OSMOTIC DANGER", sz.x, sz.y + 8);
+                }
+            });
+
+            // Draw World Boundaries (Red Wall)
+            ctx.strokeStyle = "rgba(244, 63, 94, 0.6)";
+            ctx.lineWidth = 6;
+            ctx.strokeRect(-WORLD_SIZE, -WORLD_SIZE, WORLD_SIZE * 2, WORLD_SIZE * 2);
+            ctx.restore();
+        }
+
+        // Draw Swirling vortices
+        function drawVortices(ctx, time) {
+            vortices.forEach(v => {
+                ctx.save();
+                ctx.translate(v.x, v.y);
+                v.angle -= 0.04; // rotate
+                ctx.rotate(v.angle);
+
+                // Draw spiral lines
+                ctx.beginPath();
+                const spirals = 4;
+                ctx.strokeStyle = "rgba(56, 189, 248, 0.25)";
+                ctx.lineWidth = 3;
+
+                for (let s = 0; s < spirals; s++) {
+                    const baseAngle = (s / spirals) * Math.PI * 2;
+                    ctx.beginPath();
+                    for (let r = 0; r < v.radius; r += 5) {
+                        const theta = baseAngle + r * 0.015 + time * 0.05;
+                        const px = Math.cos(theta) * r;
+                        const py = Math.sin(theta) * r;
+                        if (r === 0) ctx.moveTo(px, py);
+                        else ctx.lineTo(px, py);
+                    }
+                    ctx.stroke();
+                }
+
+                // Center glow
+                ctx.beginPath();
+                ctx.arc(0, 0, 30, 0, Math.PI * 2);
+                ctx.fillStyle = "rgba(56, 189, 248, 0.15)";
+                ctx.fill();
+                ctx.restore();
+            });
+        }
+
+        // Start Game click
+        startBtn.addEventListener("click", () => {
+            menuOverlay.classList.add("hidden");
+            resetGame();
+            gameRunning = true;
+        });
+
+        function resetGame() {
+            playerCells = [{
+                x: 0,
+                y: 0,
+                vx: 0,
+                vy: 0,
+                lastVx: 0,
+                lastVy: 0,
+                mass: 1.0,
+                radius: 38,
+                nucleusOffsetX: -0.05,
+                nucleusOffsetY: -0.05,
+                nucleusVx: 0,
+                nucleusVy: 0,
+                squishOffsetX: 1,
+                squishOffsetY: 0,
+                squishAmount: 0,
+                squishVx: 0,
+                sporeMode: false,
+                wobbleSpeed: 3.5,
+                wobbleAmp: 0.035,
+                wobbleFreq: 8,
+                mergeCooldown: 0,
+                pets: [] // array of orbiting pets: { angle }
+            }];
+
+            score = 0;
+            totalPlayerMass = 1.0;
+            triggeredMilestones = [];
+            projectiles = [];
+            
+            mutations = {
+                mitochondria_efficiency: false,
+                sticky_glycocalyx: false,
+                rigid_cell_wall: false,
+                acid_projectile_boost: false
+            };
+
+            // Reset badges
+            document.getElementById("badge-efficiency").style.display = "none";
+            document.getElementById("badge-glycocalyx").style.display = "none";
+            document.getElementById("badge-wall").style.display = "none";
+            document.getElementById("badge-lysosome").style.display = "none";
+            document.getElementById("badge-none").style.display = "block";
+
+            scoreText.innerText = "0";
+            sizeText.innerText = "1.00x";
+            
+            camera.x = 0;
+            camera.y = 0;
+            camera.zoom = 1.0;
+            camera.targetZoom = 1.0;
+            
+            initZones();
+            initFoods();
+            initEnemies();
+        }
+
+        let lastTime = 0;
+        
+        function loop(timestamp) {
+            const dt = (timestamp - lastTime) / 16.666;
+            lastTime = timestamp;
+            const timeInSeconds = timestamp / 1000.0;
+
+            if (gameRunning && !isPaused) {
+                update(dt);
+            }
+            render(timeInSeconds);
+
+            requestAnimationFrame(loop);
+        }
+
+        // Update Physics / Mechanics
+        function update(dt) {
+            // --- 1. Player Key Acceleration Control ---
+            let inputX = 0;
+            let inputY = 0;
+
+            if (keys['w'] || keys['ArrowUp']) inputY -= 1;
+            if (keys['s'] || keys['ArrowDown']) inputY += 1;
+            if (keys['a'] || keys['ArrowLeft']) inputX -= 1;
+            if (keys['d'] || keys['ArrowRight']) inputX += 1;
+
+            if (inputX !== 0 || inputY !== 0) {
+                const len = Math.sqrt(inputX * inputX + inputY * inputY);
+                inputX /= len;
+                inputY /= len;
+            }
+
+            // Cilia braking status
+            const isBraking = keys['control'] || keys['Control'];
+
+            // Loop and move player cells
+            playerCells.forEach(cell => {
+                if (cell.sporeMode) {
+                    // Friction is heavy, halts movement
+                    cell.vx -= cell.vx * 0.2 * dt;
+                    cell.vy -= cell.vy * 0.2 * dt;
+                    
+                    // Osmotic spore decay (drains mass very slowly)
+                    cell.mass -= 0.005 * cell.mass * 0.016 * dt;
+                    cell.radius = 38 * Math.sqrt(cell.mass);
+                } else {
+                    // Apply acceleration
+                    if (inputX !== 0 || inputY !== 0) {
+                        const cellAccel = (PLAYER_ACCEL / Math.sqrt(cell.mass)) * dt;
+                        cell.vx += inputX * cellAccel;
+                        cell.vy += inputY * cellAccel;
+                    }
+
+                    // Apply friction (lower for rigid walls)
+                    let friction = isBraking ? PLAYER_BRAKE_FRICTION : PLAYER_DEFAULT_FRICTION;
+                    if (mutations.rigid_cell_wall && !isBraking) {
+                        friction *= 0.6;
+                    }
+                    cell.vx -= cell.vx * friction * dt;
+                    cell.vy -= cell.vy * friction * dt;
+
+                    // Enforce minimum baseline drift
+                    const minSpeed = 1.6 / Math.sqrt(cell.mass);
+                    const speed = Math.sqrt(cell.vx * cell.vx + cell.vy * cell.vy);
+                    if (speed < minSpeed) {
+                        if (speed === 0) {
+                            const angle = Math.random() * Math.PI * 2;
+                            cell.vx = Math.cos(angle) * minSpeed;
+                            cell.vy = Math.sin(angle) * minSpeed;
+                        } else {
+                            cell.vx = (cell.vx / speed) * minSpeed;
+                            cell.vy = (cell.vy / speed) * minSpeed;
+                        }
+                    }
+
+                    // Limit speed
+                    let speedLimit = PLAYER_MAX_SPEED / Math.sqrt(cell.mass);
+                    if (mutations.rigid_cell_wall) speedLimit *= 1.3;
+
+                    const speedNew = Math.sqrt(cell.vx * cell.vx + cell.vy * cell.vy);
+                    if (speedNew > speedLimit) {
+                        cell.vx = (cell.vx / speedNew) * speedLimit;
+                        cell.vy = (cell.vy / speedNew) * speedLimit;
+                    }
+                }
+
+                // Position apply
+                cell.x += cell.vx * dt;
+                cell.y += cell.vy * dt;
+
+                // Boundary bounds
+                const limit = WORLD_SIZE - cell.radius;
+                if (Math.abs(cell.x) > limit) {
+                    cell.x = Math.sign(cell.x) * limit;
+                    cell.vx = -cell.vx * 0.4;
+                }
+                if (Math.abs(cell.y) > limit) {
+                    cell.y = Math.sign(cell.y) * limit;
+                    cell.vy = -cell.vy * 0.4;
+                }
+
+                // Decrement split-merge timers
+                if (cell.mergeCooldown > 0) {
+                    cell.mergeCooldown -= dt;
+                }
+
+                // --- Nucleus Spring solver ---
+                const accelX = (cell.vx - cell.lastVx) / dt;
+                const accelY = (cell.vy - cell.lastVy) / dt;
+                cell.lastVx = cell.vx;
+                cell.lastVy = cell.vy;
+
+                // Spore mode decreases nucleus movement
+                const activeInertia = cell.sporeMode ? 0.0 : N_INERTIA;
+                const dispX = cell.nucleusOffsetX - (-0.05);
+                const dispY = cell.nucleusOffsetY - (-0.05);
+
+                const nAccelX = -N_SPRING * dispX - N_DAMPING * cell.nucleusVx - accelX * activeInertia;
+                const nAccelY = -N_SPRING * dispY - N_DAMPING * cell.nucleusVy - accelY * activeInertia;
+
+                cell.nucleusVx += nAccelX * dt;
+                cell.nucleusVy += nAccelY * dt;
+                cell.nucleusOffsetX += cell.nucleusVx * dt;
+                cell.nucleusOffsetY += cell.nucleusVy * dt;
+
+                const distC = Math.sqrt(cell.nucleusOffsetX * cell.nucleusOffsetX + cell.nucleusOffsetY * cell.nucleusOffsetY);
+                if (distC > 0.15) {
+                    const ratio = 0.15 / distC;
+                    cell.nucleusOffsetX *= ratio;
+                    cell.nucleusOffsetY *= ratio;
+                    cell.nucleusVx = 0;
+                    cell.nucleusVy = 0;
+                }
+
+                // --- Elastic squish solver (Jello wobble) ---
+                const accelLen = Math.sqrt(accelX * accelX + accelY * accelY);
+                if (accelLen > 2.0 && !cell.sporeMode) {
+                    cell.squishOffsetX = accelX / accelLen;
+                    cell.squishOffsetY = accelY / accelLen;
+                    cell.squishVx += accelLen * S_INERTIA;
+                }
+
+                const sForce = -S_SPRING * cell.squishAmount - S_DAMPING * cell.squishVx;
+                cell.squishVx += sForce * dt;
+                cell.squishAmount += cell.squishVx * dt;
+                cell.squishAmount = Math.max(-0.4, Math.min(0.4, cell.squishAmount));
+
+                // Orbiting pets update
+                if (cell.pets) {
+                    cell.pets.forEach(pet => {
+                        pet.angle += 0.03 * dt;
+                    });
+                }
+            });
+
+            // --- 2. Repel player cells from each other ---
+            for (let i = 0; i < playerCells.length; i++) {
+                for (let j = i + 1; j < playerCells.length; j++) {
+                    const cellA = playerCells[i];
+                    const cellB = playerCells[j];
+
+                    const dx = cellB.x - cellA.x;
+                    const dy = cellB.y - cellA.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const minDist = (cellA.radius + cellB.radius) * 0.85;
+
+                    if (dist < minDist) {
+                        const overlap = minDist - dist;
+                        const dirX = dist > 0.001 ? dx / dist : 1;
+                        const dirY = dist > 0.001 ? dy / dist : 0;
+
+                        // Repulsion acceleration force
+                        const pushFactor = 0.12 * (1.0 - (dist / minDist)) * dt;
+                        const totalM = cellA.mass + cellB.mass;
+
+                        cellA.vx -= dirX * pushFactor * (cellB.mass / totalM);
+                        cellA.vy -= dirY * pushFactor * (cellB.mass / totalM);
+                        cellB.vx += dirX * pushFactor * (cellA.mass / totalM);
+                        cellB.vy += dirY * pushFactor * (cellA.mass / totalM);
+
+                        // Position snap offset
+                        cellA.x -= dirX * overlap * 0.1;
+                        cellA.y -= dirY * overlap * 0.1;
+                        cellB.x += dirX * overlap * 0.1;
+                        cellB.y += dirY * overlap * 0.1;
+                    }
+                }
+            }
+
+            // --- 3. Merge split cells back together ---
+            let mergedCells = [];
+            for (let i = 0; i < playerCells.length; i++) {
+                const cellA = playerCells[i];
+                if (cellA.mergeCooldown > 0 || mergedCells.includes(cellA)) continue;
+
+                for (let j = i + 1; j < playerCells.length; j++) {
+                    const cellB = playerCells[j];
+                    if (cellB.mergeCooldown > 0 || mergedCells.includes(cellB)) continue;
+
+                    const dist = Math.sqrt((cellA.x - cellB.x) * (cellA.x - cellB.x) + (cellA.y - cellB.y) * (cellA.y - cellB.y));
+                    if (dist < (cellA.radius + cellB.radius) * 0.45) {
+                        // Merge B into A
+                        cellA.mass += cellB.mass;
+                        cellA.radius = 38 * Math.sqrt(cellA.mass);
+                        cellA.squishAmount = 0.3;
+                        cellA.squishOffsetX = cellB.x - cellA.x;
+                        cellA.squishOffsetY = cellB.y - cellA.y;
+
+                        // Merge pets into A
+                        if (cellB.pets && cellB.pets.length > 0) {
+                            if (!cellA.pets) cellA.pets = [];
+                            cellA.pets.push(...cellB.pets);
+                        }
+
+                        mergedCells.push(cellB);
+                    }
+                }
+            }
+            playerCells = playerCells.filter(c => !mergedCells.includes(c));
+            if (mergedCells.length > 0) {
+                updateTotalPlayerMass();
+            }
+
+            // --- 4. Fluid forces (Vortices & Sea Currents) ---
+            // Vortices
+            vortices.forEach(v => {
+                // Apply force to player cells
+                playerCells.forEach(cell => {
+                    const dx = v.x - cell.x;
+                    const dy = v.y - cell.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < v.radius) {
+                        const factor = 1.0 - (dist / v.radius);
+                        const pullDirX = dx / dist;
+                        const pullDirY = dy / dist;
+                        const swirlDirX = -dy / dist;
+                        const swirlDirY = dx / dist;
+
+                        const pull = 0.05 * factor * dt;
+                        const swirl = 0.08 * factor * dt;
+
+                        cell.vx += pullDirX * pull + swirlDirX * swirl;
+                        cell.vy += pullDirY * pull + swirlDirY * swirl;
+                    }
+                });
+
+                // Apply to food
+                foods.forEach(f => {
+                    const dx = v.x - f.x;
+                    const dy = v.y - f.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < v.radius) {
+                        const factor = 1.0 - (dist / v.radius);
+                        f.vx += (-dy / dist) * 0.08 * factor * dt + (dx / dist) * 0.04 * factor * dt;
+                        f.vy += (dx / dist) * 0.08 * factor * dt + (dy / dist) * 0.04 * factor * dt;
+                    }
+                });
+
+                // Apply to enemies
+                enemies.forEach(e => {
+                    const dx = v.x - e.x;
+                    const dy = v.y - e.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < v.radius) {
+                        const factor = 1.0 - (dist / v.radius);
+                        e.vx += (-dy / dist) * 0.06 * factor * dt + (dx / dist) * 0.03 * factor * dt;
+                        e.vy += (dx / dist) * 0.06 * factor * dt + (dy / dist) * 0.03 * factor * dt;
+                    }
+                });
+            });
+
+            // --- 5. Osmotic Salt Zones Dehydration ---
+            if (!mutations.rigid_cell_wall) {
+                saltZones.forEach(sz => {
+                    playerCells.forEach(cell => {
+                        const dist = Math.sqrt((cell.x - sz.x) * (cell.x - sz.x) + (cell.y - sz.y) * (cell.y - sz.y));
+                        if (dist < sz.radius && !cell.sporeMode) {
+                            // Dehydrate player: lose 6% mass per second
+                            cell.mass -= cell.mass * 0.06 * 0.016 * dt;
+                            cell.radius = 38 * Math.sqrt(cell.mass);
+                        }
+                    });
+                });
+                updateTotalPlayerMass();
+            }
+
+            // --- 6. AI Enemy Logic (Predators & Runners) ---
+            enemies.forEach(e => {
+                // Wandering timer
+                e.steeringTimer -= dt;
+                if (e.steeringTimer <= 0) {
+                    selectNPCSteering(e);
+                }
+
+                // AI Steering targeting player
+                let targetCell = null;
+                let targetDist = 999999.0;
+                
+                // Seek closest player cell that is NOT in spore mode
+                playerCells.forEach(cell => {
+                    if (cell.sporeMode) return;
+                    const dist = Math.sqrt((cell.x - e.x)*(cell.x - e.x) + (cell.y - e.y)*(cell.y - e.y));
+                    if (dist < targetDist && dist < 650) {
+                        targetDist = dist;
+                        targetCell = cell;
+                    }
+                });
+
+                if (targetCell) {
+                    const dx = targetCell.x - e.x;
+                    const dy = targetCell.y - e.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const isPlayerLarger = targetCell.mass > e.mass;
+
+                    if (e.typeName === "predator") {
+                        if (isPlayerLarger) {
+                            // Flee from player
+                            e.vx -= (dx / dist) * NPC_STEERING_FORCE * dt;
+                            e.vy -= (dy / dist) * NPC_STEERING_FORCE * dt;
+                        } else {
+                            // Chase player
+                            e.vx += (dx / dist) * (NPC_STEERING_FORCE * 1.3) * dt;
+                            e.vy += (dy / dist) * (NPC_STEERING_FORCE * 1.3) * dt;
+                        }
+                    } else if (e.typeName === "runner") {
+                        // Flee from player
+                        if (dist < 400) {
+                            e.vx -= (dx / dist) * (NPC_STEERING_FORCE * 1.5) * dt;
+                            e.vy -= (dy / dist) * (NPC_STEERING_FORCE * 1.5) * dt;
+                        } else {
+                            // Roam steer
+                            e.vx += e.targetSteeringX * dt;
+                            e.vy += e.targetSteeringY * dt;
+                        }
+                    }
+                } else {
+                    // Roam steer
+                    e.vx += e.targetSteeringX * dt;
+                    e.vy += e.targetSteeringY * dt;
+                }
+
+                // Apply drag
+                e.vx -= e.vx * NPC_FRICTION * dt;
+                e.vy -= e.vy * NPC_FRICTION * dt;
+
+                // Speed limit
+                let speedLimit = NPC_MAX_SPEED / Math.sqrt(e.mass);
+                if (e.typeName === "runner") speedLimit *= 1.4;
+                
+                const speed = Math.sqrt(e.vx * e.vx + e.vy * e.vy);
+                if (speed > speedLimit) {
+                    e.vx = (e.vx / speed) * speedLimit;
+                    e.vy = (e.vy / speed) * speedLimit;
+                }
+
+                // Apply pos
+                e.x += e.vx * dt;
+                e.y += e.vy * dt;
+
+                // Bounce bounds
+                const limit = WORLD_SIZE - e.radius;
+                if (Math.abs(e.x) > limit) {
+                    e.x = Math.sign(e.x) * limit;
+                    e.vx = -e.vx * 0.8;
+                }
+                if (Math.abs(e.y) > limit) {
+                    e.y = Math.sign(e.y) * limit;
+                    e.vy = -e.vy * 0.8;
+                }
+
+                // --- Nucleus Spring solver ---
+                const accelX = (e.vx - e.lastVx) / dt;
+                const accelY = (e.vy - e.lastVy) / dt;
+                e.lastVx = e.vx;
+                e.lastVy = e.vy;
+
+                const dispX = e.nucleusOffsetX;
+                const dispY = e.nucleusOffsetY;
+
+                const nAccelX = -N_SPRING * dispX - N_DAMPING * e.nucleusVx - accelX * N_INERTIA;
+                const nAccelY = -N_SPRING * dispY - N_DAMPING * e.nucleusVy - accelY * N_INERTIA;
+
+                e.nucleusVx += nAccelX * dt;
+                e.nucleusVy += nAccelY * dt;
+                e.nucleusOffsetX += e.nucleusVx * dt;
+                e.nucleusOffsetY += e.nucleusVy * dt;
+
+                const distC = Math.sqrt(e.nucleusOffsetX * e.nucleusOffsetX + e.nucleusOffsetY * e.nucleusOffsetY);
+                if (distC > 0.15) {
+                    const ratio = 0.15 / distC;
+                    e.nucleusOffsetX *= ratio;
+                    e.nucleusOffsetY *= ratio;
+                    e.nucleusVx = 0;
+                    e.nucleusVy = 0;
+                }
+
+                // --- Elastic squish solver (Jello wobble) ---
+                const accelLen = Math.sqrt(accelX * accelX + accelY * accelY);
+                if (accelLen > 2.0) {
+                    e.squishOffsetX = accelX / accelLen;
+                    e.squishOffsetY = accelY / accelLen;
+                    e.squishVx += accelLen * S_INERTIA;
+                }
+
+                const sForce = -S_SPRING * e.squishAmount - S_DAMPING * e.squishVx;
+                e.squishVx += sForce * dt;
+                e.squishAmount += e.squishVx * dt;
+                e.squishAmount = Math.max(-0.4, Math.min(0.4, e.squishAmount));
+            });
+
+            // --- 7. Projectile mechanics ---
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const p = projectiles[i];
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+                p.lifetime -= dt;
+
+                let hit = false;
+
+                // Check collision with enemies
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const e = enemies[j];
+                    const dx = e.x - p.x;
+                    const dy = e.y - p.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < e.radius + p.radius) {
+                        // Impact! Melt mass by 30% (45% with mutation)
+                        const shrink = mutations.acid_projectile_boost ? 0.55 : 0.70;
+                        e.mass *= shrink;
+                        e.radius = 38 * Math.sqrt(e.mass);
+
+                        // Apply backward thrust impact
+                        e.vx += (p.vx / 16.0) * 8.0;
+                        e.vy += (p.vy / 16.0) * 8.0;
+                        e.squishAmount = -0.3;
+                        e.squishOffsetX = p.vx;
+                        e.squishOffsetY = p.vy;
+
+                        hit = true;
+                        break;
+                    }
+                }
+
+                if (hit || p.lifetime <= 0) {
+                    projectiles.splice(i, 1);
+                }
+            }
+
+            // --- 8. Roaming Food Mechanics ---
+            for (let i = foods.length - 1; i >= 0; i--) {
+                const f = foods[i];
+
+                f.steeringTimer -= dt;
+                if (f.steeringTimer <= 0) {
+                    selectNPCSteering(f);
+                }
+
+                f.vx += f.targetSteeringX * dt;
+                f.vy += f.targetSteeringY * dt;
+
+                f.vx -= f.vx * NPC_FRICTION * dt;
+                f.vy -= f.vy * NPC_FRICTION * dt;
+
+                // Minimum speed
+                const fSpeed = Math.sqrt(f.vx * f.vx + f.vy * f.vy);
+                if (fSpeed < 0.5) {
+                    const angle = Math.random() * Math.PI * 2;
+                    f.vx = Math.cos(angle) * 0.5;
+                    f.vy = Math.sin(angle) * 0.5;
+                }
+
+                f.x += f.vx * dt;
+                f.y += f.vy * dt;
+
+                // Bounce boundaries
+                const fLimit = WORLD_SIZE - f.radius;
+                if (Math.abs(f.x) > fLimit) {
+                    f.x = Math.sign(f.x) * fLimit;
+                    f.vx = -f.vx * 0.8;
+                    f.targetSteeringX *= -1;
+                }
+                if (Math.abs(f.y) > fLimit) {
+                    f.y = Math.sign(f.y) * fLimit;
+                    f.vy = -f.vy * 0.8;
+                    f.targetSteeringY *= -1;
+                }
+
+                // Food nucleus wiggles
+                const fAccelX = (f.vx - f.lastVx) / dt;
+                const fAccelY = (f.vy - f.lastVy) / dt;
+                f.lastVx = f.vx;
+                f.lastVy = f.vy;
+
+                const fnAccelX = -N_SPRING * f.nucleusOffsetX - N_DAMPING * f.nucleusVx - fAccelX * N_INERTIA;
+                const fnAccelY = -N_SPRING * f.nucleusOffsetY - N_DAMPING * f.nucleusVy - fAccelY * N_INERTIA;
+
+                f.nucleusVx += fnAccelX * dt;
+                f.nucleusVy += fnAccelY * dt;
+                f.nucleusOffsetX += f.nucleusVx * dt;
+                f.nucleusOffsetY += f.nucleusVy * dt;
+
+                const fNDist = Math.sqrt(f.nucleusOffsetX * f.nucleusOffsetX + f.nucleusOffsetY * f.nucleusOffsetY);
+                if (fNDist > 0.15) {
+                    f.nucleusOffsetX *= 0.15 / fNDist;
+                    f.nucleusOffsetY *= 0.15 / fNDist;
+                    f.nucleusVx = 0;
+                    f.nucleusVy = 0;
+                }
+
+                // --- 9. Food magnetic attraction towards pets ---
+                playerCells.forEach(cell => {
+                    if (cell.pets && cell.pets.length > 0) {
+                        cell.pets.forEach((pet, pIdx) => {
+                            // Calculate pet world position
+                            const petOrbitRadius = (95.0 * Math.sqrt(cell.mass));
+                            const petX = cell.x + Math.cos(pet.angle) * petOrbitRadius;
+                            const petY = cell.y + Math.sin(pet.angle) * petOrbitRadius;
+
+                            const dx = petX - f.x;
+                            const dy = petY - f.y;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            
+                            let magnetRad = 250;
+                            if (mutations.sticky_glycocalyx) magnetRad *= 1.8;
+
+                            if (dist < magnetRad) {
+                                // Magnetically pull food
+                                const pullFactor = 0.28 * (1.0 - (dist / magnetRad)) * dt;
+                                f.vx += (dx / dist) * pullFactor;
+                                f.vy += (dy / dist) * pullFactor;
+                            }
+                        });
+                    }
+                });
+
+                // --- 10. Eating Collisions between Player Cells and Food ---
+                let foodEaten = false;
+                for (let j = 0; j < playerCells.length; j++) {
+                    const cell = playerCells[j];
+                    const dist = Math.sqrt((cell.x - f.x) * (cell.x - f.x) + (cell.y - f.y) * (cell.y - f.y));
+
+                    if (dist < cell.radius && !cell.sporeMode) {
+                        // Eat food!
+                        score += Math.round(f.value * 10);
+                        cell.mass += f.value * 0.08;
+                        cell.radius = 38 * Math.sqrt(cell.mass);
+                        cell.squishAmount = 0.15;
+                        
+                        // Symbiont Pet spawn check
+                        if (f.foodType === "symbiont") {
+                            // Spawn pet attached to this cell
+                            if (!cell.pets) cell.pets = [];
+                            if (cell.pets.length < 3) {
+                                cell.pets.push({ angle: Math.random() * Math.PI * 2 });
+                            }
+                        }
+
+                        foodEaten = true;
+                        break;
+                    }
+                }
+
+                // Check if eaten by AI enemies
+                if (!foodEaten) {
+                    for (let j = 0; j < enemies.length; j++) {
+                        const e = enemies[j];
+                        const dist = Math.sqrt((e.x - f.x) * (e.x - f.x) + (e.y - f.y) * (e.y - f.y));
+                        if (dist < e.radius) {
+                            e.mass += f.value * 0.12;
+                            e.radius = 38 * Math.sqrt(e.mass);
+                            foodEaten = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (foodEaten) {
+                    foods.splice(i, 1);
+                    // Standard vs Salt-zone spawn balance
+                    foods.push(createFood(Math.random() < 0.3));
+                }
+            }
+
+            // Keep food populated
+            while (foods.length < MAX_FOOD) {
+                foods.push(createFood(Math.random() < 0.25));
+            }
+
+            // --- 11. Eating collisions between Player Cells and AI Enemies ---
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const e = enemies[i];
+                let enemyDead = false;
+
+                for (let j = playerCells.length - 1; j >= 0; j--) {
+                    const cell = playerCells[j];
+                    if (cell.sporeMode) continue; // Immune!
+
+                    const dist = Math.sqrt((cell.x - e.x) * (cell.x - e.x) + (cell.y - e.y) * (cell.y - e.y));
+                    if (dist < cell.radius + e.radius) {
+                        // Check sizing (15% difference needed)
+                        if (cell.mass > e.mass * 1.15) {
+                            // Player eats enemy
+                            cell.mass += e.mass * 0.4;
+                            cell.radius = 38 * Math.sqrt(cell.mass);
+                            cell.squishAmount = 0.35;
+                            cell.squishOffsetX = e.x - cell.x;
+                            cell.squishOffsetY = e.y - cell.y;
+                            score += Math.round(e.mass * 100);
+
+                            enemies.splice(i, 1);
+                            enemyDead = true;
+                            break;
+                        } else if (e.mass > cell.mass * 1.15) {
+                            // Enemy eats player cell piece!
+                            e.mass += cell.mass * 0.4;
+                            e.radius = 38 * Math.sqrt(e.mass);
+                            e.squishAmount = 0.35;
+                            e.squishOffsetX = cell.x - e.x;
+                            e.squishOffsetY = cell.y - e.y;
+
+                            playerCells.splice(j, 1);
+                            break;
+                        }
+                    }
+                }
+
+                if (enemyDead) {
+                    // Spawn replacement
+                    enemies.push(createEnemy());
+                }
+            }
+
+            // Keep enemies populated
+            while (enemies.length < MAX_ENEMIES) {
+                enemies.push(createEnemy());
+            }
+
+            // Game over check
+            if (playerCells.length === 0) {
+                gameRunning = false;
+                menuOverlay.classList.remove("hidden");
+                document.querySelector(".menu-title").innerText = "실험 종료 (게임 오버)";
+                document.querySelector(".menu-desc").innerText = `세포 활동이 정지했습니다. 포식자에 의해 모든 세포 조각이 흡수당했습니다.\n최종 점수: ${score}점 | 최종 성장: ${totalPlayerMass.toFixed(2)}x`;
+                document.querySelector("#start-btn").innerText = "실험 재시작";
+                return;
+            }
+
+            updateTotalPlayerMass();
+
+            // --- 12. Camera tracking average center ---
+            let avgX = 0;
+            let avgY = 0;
+            playerCells.forEach(cell => {
+                avgX += cell.x;
+                avgY += cell.y;
+            });
+            avgX /= playerCells.length;
+            avgY /= playerCells.length;
+
+            camera.x += (avgX - camera.x) * 0.1 * dt;
+            camera.y += (avgY - camera.y) * 0.1 * dt;
+
+            // Bounding box for spread zoom adjustment
+            let maxDist = 0;
+            playerCells.forEach(cell => {
+                const dist = Math.sqrt((cell.x - avgX)*(cell.x - avgX) + (cell.y - avgY)*(cell.y - avgY)) + cell.radius;
+                if (dist > maxDist) maxDist = dist;
+            });
+
+            let zoomVal = 1.0 / Math.sqrt(totalPlayerMass);
+            if (maxDist > 250) {
+                zoomVal *= (250 / maxDist);
+            }
+            camera.targetZoom = Math.max(0.22, Math.min(1.2, zoomVal));
+            camera.zoom += (camera.targetZoom - camera.zoom) * 0.05 * dt;
+        }
+
+        // Render Graphics
+        function render(time) {
+            ctx.fillStyle = "#050608";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Save View Matrix
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.scale(camera.zoom, camera.zoom);
+            ctx.translate(-camera.x, -camera.y);
+
+            // 1. Draw static grid and Osmotic zones
+            drawGrid(ctx, camera.x, camera.y, camera.zoom);
+
+            // 2. Draw vortices
+            drawVortices(ctx, time);
+
+            // 3. Draw food items
+            foods.forEach((f, idx) => {
+                drawWobblyCell(
+                    ctx, f.x, f.y, f.radius, f.color, f.nucleusColor,
+                    time + idx, f.wobbleFreq, f.wobbleAmp, f.wobbleSpeed,
+                    f.nucleusOffsetX, f.nucleusOffsetY
+                );
+            });
+
+            // 4. Draw projectiles
+            projectiles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = "rgba(74, 222, 128, 0.9)"; // acid green
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = "rgba(34, 197, 94, 1.0)";
+                ctx.stroke();
+            });
+
+            // 5. Draw enemies (Predators & Runners)
+            enemies.forEach((e, idx) => {
+                drawWobblyCell(
+                    ctx, e.x, e.y, e.radius, e.color, e.nucleusColor,
+                    time + idx, e.wobbleFreq, e.wobbleAmp, e.wobbleSpeed,
+                    e.nucleusOffsetX, e.nucleusOffsetY
+                );
+
+                // Add squish deformations
+                ctx.save();
+                ctx.translate(e.x, e.y);
+                const angle = Math.atan2(e.squishOffsetY, e.squishOffsetX);
+                ctx.rotate(angle);
+                ctx.scale(1.0 + e.squishAmount, 1.0 - e.squishAmount);
+                // Simple outline deformation rendering logic
+                ctx.restore();
+            });
+
+            // 6. Draw player cells
+            playerCells.forEach(cell => {
+                // Determine color (brown in spore mode)
+                let cColor = cell.sporeMode ? "rgba(100, 75, 55, 0.9)" : "rgba(56, 189, 248, 0.85)";
+                let nColor = cell.sporeMode ? "rgba(60, 40, 25, 0.95)" : "rgba(14, 116, 144, 0.9)";
+
+                // Dynamic cell body wobbly drawing with squish deformations
+                ctx.save();
+                
+                // Set ellipse transformation matrix matching squish parameters
+                ctx.translate(cell.x, cell.y);
+                const squishAngle = Math.atan2(cell.squishOffsetY, cell.squishOffsetX);
+                ctx.rotate(squishAngle);
+                ctx.scale(1.0 + cell.squishAmount, 1.0 - cell.squishAmount);
+                ctx.translate(-cell.x, -cell.y);
+
+                drawWobblyCell(
+                    ctx, cell.x, cell.y, cell.radius, cColor, nColor,
+                    time, cell.wobbleFreq, cell.wobbleAmp * (cell.sporeMode ? 0.15 : 1.0),
+                    cell.wobbleSpeed, cell.nucleusOffsetX, cell.nucleusOffsetY
+                );
+
+                // Add shell outline in Spore Mode
+                if (cell.sporeMode) {
+                    ctx.beginPath();
+                    ctx.arc(cell.x, cell.y, cell.radius - 2, 0, Math.PI * 2);
+                    ctx.lineWidth = 5;
+                    ctx.strokeStyle = "rgba(160, 120, 90, 0.9)";
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+
+                // Draw orbiting symbiont pets
+                if (cell.pets) {
+                    cell.pets.forEach(pet => {
+                        const orbitRadius = (95.0 * Math.sqrt(cell.mass));
+                        const petX = cell.x + Math.cos(pet.angle) * orbitRadius;
+                        const petY = cell.y + Math.sin(pet.angle) * orbitRadius;
+
+                        ctx.save();
+                        // Tiny cyan pet wiggles
+                        drawWobblyCell(
+                            ctx, petX, petY, 11, "rgba(34, 211, 238, 0.85)", "rgba(8, 145, 178, 0.95)",
+                            time * 1.5, 6, 0.05, 5.0, 0, 0
+                        );
+                        ctx.restore();
+                    });
+                }
+            });
+
+            ctx.restore(); // Restore View Matrix
+
+            // 7. Scent Compass indicators for Golden Food and Predators (renders in Screen overlay space)
+            if (playerCells.length > 0) {
+                let avgX = 0, avgY = 0;
+                playerCells.forEach(c => { avgX += c.x; avgY += c.y; });
+                avgX /= playerCells.length;
+                avgY /= playerCells.length;
+                drawScentIndicators(ctx, { x: avgX, y: avgY });
+            }
+        }
+
+        // Initialize and start loops
+        initZones();
+        initFoods();
+        initEnemies();
+        requestAnimationFrame((t) => {
+            lastTime = t;
+            requestAnimationFrame(loop);
+        });
+    </script>
+</body>
+</html>

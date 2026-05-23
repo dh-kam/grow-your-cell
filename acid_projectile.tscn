@@ -1,0 +1,33 @@
+[gd_scene load_steps=5 format=3 uid="uid://cb327hsgq483"]
+
+[ext_resource type="Script" path="res://acid_projectile.gd" id="1_projectile"]
+[ext_resource type="Shader" path="res://cell_shader.gdshader" id="2_shader"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_projectile"]
+shader = ExtResource("2_shader")
+shader_parameter/cell_color = Color(0.3, 0.9, 0.4, 0.95)
+shader_parameter/nucleus_color = Color(0.1, 0.5, 0.2, 0.95)
+shader_parameter/wobble_speed = 6.0
+shader_parameter/wobble_amplitude = 0.05
+shader_parameter/wobble_frequency = 10.0
+shader_parameter/nucleus_offset = Vector2(0.0, 0.0)
+shader_parameter/squish_dir = Vector2(1, 0)
+shader_parameter/squish_amount = 0.0
+shader_parameter/spore_mode = 0.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_projectile"]
+radius = 12.0
+
+[node name="AcidProjectile" type="Area2D" groups=["projectiles"]]
+script = ExtResource("1_projectile")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_projectile")
+offset_left = -15.0
+offset_top = -15.0
+offset_right = 15.0
+offset_bottom = 15.0
+mouse_filter = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_projectile")

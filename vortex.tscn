@@ -1,0 +1,45 @@
+[gd_scene load_steps=5 format=3 uid="uid://df327hsgq483"]
+
+[ext_resource type="Script" path="res://vortex.gd" id="1_vortex"]
+
+[sub_resource type="Shader" id="Shader_vortex"]
+code = "shader_type canvas_item;
+
+void fragment() {
+    vec2 center = vec2(0.5);
+    vec2 uv = UV - center;
+    float dist = length(uv);
+    if (dist > 0.5) {
+        discard;
+    }
+    
+    // Draw swirling spiral lines
+    float angle = atan(uv.y, uv.x);
+    float spiral = sin(angle * 4.0 + dist * 30.0 - TIME * 6.0);
+    
+    // Fade out at edges
+    float alpha = smoothstep(0.5, 0.35, dist) * 0.22;
+    
+    // Glowing teal color
+    COLOR = vec4(0.2, 0.7, 0.9, alpha * (spiral * 0.5 + 0.5));
+}"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_vortex"]
+shader = SubResource("Shader_vortex")
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_vortex"]
+radius = 250.0
+
+[node name="Vortex" type="Area2D" groups=["vortices"]]
+script = ExtResource("1_vortex")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_vortex")
+offset_left = -250.0
+offset_top = -250.0
+offset_right = 250.0
+offset_bottom = 250.0
+mouse_filter = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_vortex")
